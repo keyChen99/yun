@@ -49,20 +49,6 @@
     </div>
 
     <div id="idListView" style="display:none;">
-        <div class="float-ball" onclick="toggleCloudDrawer()">☁️</div>
-        <div id="cloudDrawer" class="cloud-drawer">
-            <div class="cloud-drawer-header">
-                <span class="cloud-drawer-title">☁️ 云机快捷工具</span>
-                <span class="cloud-drawer-close" onclick="toggleCloudDrawer()">&times;</span>
-            </div>
-            <div style="flex: 1;">
-                <textarea id="cloudInput" class="viewer-input" style="min-height: 120px;" placeholder="粘贴文本..." oninput="updateCloudResult()"></textarea>
-                <div style="margin-top: 15px;">
-                    <div id="cloudResult" style="background: #f8f9fa; border: 1px solid #e8e8e8; border-radius: 8px; padding: 12px; min-height: 80px; white-space: pre-wrap; font-family: monospace; font-size: 14px; color: #333; margin-bottom: 12px;"></div>
-                    <button class="primary-btn" style="background: #52c41a; margin-top: 0; width: 100%;" onclick="copyCloudResult()">复制结构化数据</button>
-                </div>
-            </div>
-        </div>
         <div class="topbar">
             <button class="back-btn" onclick="showView('home')">返回</button>
             <div class="topbar-title">项目与票价ID列表</div>

@@ -1,8 +1,8 @@
 let currentView = "home";
 window.setCurrentView = function(view) {
     currentView = view;
-    // 如果离开 idlist，自动关闭云机抽屉
-    if (view !== 'idlist') {
+    // 如果离开 idlist 或 ticketing，自动关闭云机抽屉
+    if (view !== 'idlist' && view !== 'ticketing') {
         const drawer = document.getElementById('cloudDrawer');
         if (drawer) drawer.classList.remove('open');
     }
