@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>演唱会库存监控</title>
+</head>
+<body>
+    <div id="root"></div> <!-- Vite 根节点，显示路由内容 -->
+
+    <!-- 初始加载遮罩 -->
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div id="loading-text" style="color: #1890ff; font-weight: bold;">系统启动中...</div>
+        <div id="loading-sub" style="color: #999; font-size: 12px; margin-top: 10px;">正在连接服务器并初始化组件</div>
+    </div>
+
+    <h1 class="title">演出库存监控系统</h1>
+
+    <div id="homeView" style="display:none;">
+        <div class="entry-grid">
+            <button class="entry-btn" onclick="showView('inventory')">查看库存</button>
+            <button class="entry-btn" onclick="showView('viewers')">查看观影人</button>
+            <button class="entry-btn" onclick="showView('virtual_numbers')">虚拟号表</button>
+            <button class="entry-btn" onclick="showView('idlist')">ID 列表</button>
+            <button class="entry-btn" style="background: #722ed1; color: white;" onclick="showView('ticketing')">票务系统</button>
+        </div>
+    </div>
+
+    <div id="inventoryView" style="display:none;">
+        <div class="topbar">
+            <button class="back-btn" onclick="showView('home')">返回</button>
+            <div class="topbar-title">演出库存列表</div>
+        </div>
+        <div id="cardContainer" class="card-container"></div>
+    </div>
+
+    <div id="viewersView" style="display:none;">
+        <div class="topbar">
+            <button class="back-btn" onclick="showView('home')">返回</button>
+            <div class="topbar-title">观影人管理</div>
+        </div>
+        <div class="viewer-panel">
+            <textarea id="viewerInput" class="viewer-input" placeholder="粘贴包含姓名和身份证的复杂文本，自动识别提取"></textarea>
+            <button class="primary-btn" onclick="parseAndSaveViewers()">智能识别并保存</button>
+            <button class="danger-btn" onclick="clearViewers()">清空全部</button>
+        </div>
+        <div id="viewerList" class="viewer-list"></div>
+    </div>
+
+    <div id="idListView" style="display:none;">
+        <div class="float-ball" onclick="toggleCloudDrawer()">☁️</div>
+        <div id="cloudDrawer" class="cloud-drawer">
+            <div class="cloud-drawer-header">
+                <span class="cloud-drawer-title">☁️ 云机快捷工具</span>
+                <span class="cloud-drawer-close" onclick="toggleCloudDrawer()">&times;</span>
+            </div>
+            <div style="flex: 1;">
+                <textarea id="cloudInput" class="viewer-input" style="min-height: 120px;" placeholder="粘贴文本..." oninput="updateCloudResult()"></textarea>
+                <div style="margin-top: 15px;">
+                    <div id="cloudResult" style="background: #f8f9fa; border: 1px solid #e8e8e8; border-radius: 8px; padding: 12px; min-height: 80px; white-space: pre-wrap; font-family: monospace; font-size: 14px; color: #333; margin-bottom: 12px;"></div>
+                    <button class="primary-btn" style="background: #52c41a; margin-top: 0; width: 100%;" onclick="copyCloudResult()">复制结构化数据</button>
+                </div>
+            </div>
+        </div>
+        <div class="topbar">
+            <button class="back-btn" onclick="showView('home')">返回</button>
+            <div class="topbar-title">项目与票价ID列表</div>
+        </div>
+        <div class="viewer-panel">
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <input id="autoSearchKeyword" class="viewer-input" style="min-height: 45px; flex: 1;" placeholder="输入演出名称（如：王力宏杭州）">
+                <button id="autoSearchBtn" class="primary-btn" style="margin-top: 0; width: 100px;" onclick="autoSearchId()">自动搜索</button>
+            </div>
+            <textarea id="idListInput" class="viewer-input" placeholder="或粘贴项目链接/详情页文本，自动提取ID"></textarea>
+            <button class="primary-btn" onclick="parseAndSaveIdList()">解析并保存ID</button>
+            <div style="margin-top: 15px;">
+                <input id="idListSearch" class="viewer-input" style="min-height: 45px;" placeholder="搜索标题/项目ID/票价ID..." oninput="filterIdList()">
+            </div>
+        </div>
+        <div id="idListContainer" class="viewer-list"></div>
+    </div>
+
+    <div id="virtualNumbersView" style="display:none;">
+    </div>
+
+    <div id="ticketingView" style="display:none;">
+    </div>
+
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <div class="close-btn" onclick="closeModal()">&times;</div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script type="module" src="/src/main.jsx"></script>
+    <script>
+        // 渲染完成后隐藏加载遮罩的全局函数
+        window.hideLoading = () => {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay && overlay.style.display !== 'none') {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.style.display = 'none', 500);
+            }
+        };
+        // 兜底隐藏
+        setTimeout(window.hideLoading, 5000);
+    </script>
+</body>
+</html>
