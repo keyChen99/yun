@@ -417,6 +417,12 @@ def init_virtual_numbers_db():
             priority INTEGER DEFAULT 0
         )
     ''')
+    # 检查字段是否存在（针对旧数据库迁移）
+    cursor.execute("PRAGMA table_info(mobile_library)")
+    lib_columns = [row[1] for row in cursor.fetchall()]
+    if 'priority' not in lib_columns:
+        cursor.execute("ALTER TABLE mobile_library ADD COLUMN priority INTEGER DEFAULT 0")
+        
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS quick_copy_tools (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
