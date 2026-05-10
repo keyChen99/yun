@@ -312,7 +312,31 @@ def save_id_project(itemId, title, url, tickets, added_time=None):
     conn.commit()
     conn.close()
 
+def init_idlist_db():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS id_projects (
+            itemId TEXT PRIMARY KEY,
+            title TEXT,
+            url TEXT,
+            added_time TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS id_tickets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticketId TEXT,
+            itemId TEXT,
+            info TEXT,
+            FOREIGN KEY (itemId) REFERENCES id_projects (itemId)
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
 def get_id_projects():
+    init_idlist_db() # 确保表存在
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT itemId, title, url, added_time FROM id_projects ORDER BY added_time DESC")
@@ -322,14 +346,11 @@ def get_id_projects():
     for row in project_rows:
         itemId = row["itemId"]
         cursor.execute("SELECT ticketId, info FROM id_tickets WHERE itemId = ?", (itemId,))
-        tickets = [{"ticketId": t["ticketId"], "info": t["info"]} for t in cursor.fetchall()]
-        projects.append({
-            "itemId": itemId,
-            "title": row["title"],
-            "url": row["url"],
-            "tickets": tickets,
-            "added_time": row["added_time"]
-        })
+        tickets = [dict(t) for t in cursor.fetchall()]
+        project = dict(row)
+        project["tickets"] = tickets
+        projects.append(project)
+    
     conn.close()
     return projects
 
