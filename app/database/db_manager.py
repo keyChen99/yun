@@ -4,7 +4,16 @@ import os
 import re
 from datetime import datetime
 
-DB_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "stock.db")
+# 数据库文件路径处理
+# 优先从环境变量读取（用于 Railway 等云平台持久化挂载），否则默认保存在项目根目录
+DB_FILE = os.environ.get("DB_PATH")
+if not DB_FILE:
+    DB_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "stock.db")
+
+# 确保数据库所在目录存在
+db_dir = os.path.dirname(DB_FILE)
+if db_dir and not os.path.exists(db_dir):
+    os.makedirs(db_dir, exist_ok=True)
 
 def get_db():
     # 增加 timeout 参数（单位秒），防止数据库忙时直接报错，提高并发稳定性
