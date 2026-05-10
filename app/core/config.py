@@ -1,0 +1,23 @@
+import os
+import re
+
+# 授权密码
+AUTH_PASSWORD = "248248"
+
+# AI 相关配置
+AI_API_KEY = os.getenv("AI_API_KEY", "sk-zgclqbwmmqjcccdtlzlbjsutzkuiycbujyxzlxmmjrdywucz")
+AI_BASE_URL = "https://api.siliconflow.cn/v1"
+AI_MODEL = "deepseek-ai/DeepSeek-V3"
+
+# 正则表达式
+ID_PATTERN = r"[1-9]\d{5}(?:18|19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[\dXx]"
+PAIR_RE = re.compile(rf"([\u4e00-\u9fa5]{{2,8}})\s*({ID_PATTERN})")
+REVERSE_PAIR_RE = re.compile(rf"({ID_PATTERN})\s*([\u4e00-\u9fa5]{{2,8}})")
+NAME_LABEL_RE = re.compile(r"^(?:姓名|名字)\s*[:：]\s*([\u4e00-\u9fa5]{2,8})\s*$")
+ID_LABEL_RE = re.compile(r"^(?:身份证|身份证号)\s*[:：]\s*(" + ID_PATTERN + r")\s*$")
+PURE_NAME_RE = re.compile(r"^[\u4e00-\u9fa5]{2,8}$")
+PURE_ID_RE = re.compile(r"^" + ID_PATTERN + r"$")
+SEPARATOR_LINE_RE = re.compile(r"^[\-—_=~\u2500-\u257f\u23af\u30fc\uFF0D]{3,}$")
+
+def is_local_ip(ip: str) -> bool:
+    return ip in ["127.0.0.1", "localhost", "::1"]

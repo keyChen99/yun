@@ -1,19 +1,24 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
+import dayjs from 'dayjs';
+import duration from 'dayjs/plugin/duration';
+dayjs.extend(duration);
 import { 
   Table, Button, Input, Modal, Form, Select, Tag, Space, 
-  message, Popconfirm, Row, Col, Collapse, Radio, Divider, Popover, Card
+  message, Popconfirm, Row, Col, Collapse, Radio, Divider, Popover, Card,
+  Upload, DatePicker
 } from 'antd';
 import { 
   SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, 
   RocketOutlined, CopyOutlined, LinkOutlined, MinusOutlined,
   HomeOutlined, DesktopOutlined, TeamOutlined, DatabaseOutlined,
-  DashboardOutlined, SettingOutlined
+  DashboardOutlined, SettingOutlined, FileImageOutlined, ClockCircleOutlined
 } from '@ant-design/icons';
 import { HashRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 
 // 导入 App.css
 import './App.css';
+import ChatGenerator from './ChatGenerator';
 
 // --- 路由辅助组件 ---
 const LegacyViewWrapper = ({ viewId, onMount }) => {
@@ -188,6 +193,21 @@ const VirtualNumbersTable = ({ standalone = false }) => {
             }
         } catch (e) {
             message.error("删除失败");
+        }
+    };
+
+    const handleMoveMobileToTop = async (phone) => {
+        try {
+            const res = await fetch(`/api/mobile_library/${phone}/move_to_top`, {
+                method: "POST"
+            });
+            const result = await res.json();
+            if (result.status === "success") {
+                message.success(result.msg);
+                fetchMobileLibrary();
+            }
+        } catch (e) {
+            message.error("操作失败");
         }
     };
 
@@ -943,16 +963,28 @@ const VirtualNumbersTable = ({ standalone = false }) => {
                                      >
                                          {n} {(isUsed && !isCurrentSelected) ? '(已占用)' : ''}
                                      </Radio>
-                                     <Button 
-                                         type="text" 
-                                         danger 
-                                         size="small" 
-                                         icon={<DeleteOutlined />} 
-                                         onClick={(e) => {
-                                             e.stopPropagation();
-                                             handleDeleteMobileFromLib(n);
-                                         }}
-                                     />
+                                     <Space>
+                                         <Button 
+                                             type="text" 
+                                             size="small" 
+                                             icon={<RocketOutlined />} 
+                                             title="置顶（优先分配）"
+                                             onClick={(e) => {
+                                                 e.stopPropagation();
+                                                 handleMoveMobileToTop(n);
+                                             }}
+                                         />
+                                         <Button 
+                                             type="text" 
+                                             danger 
+                                             size="small" 
+                                             icon={<DeleteOutlined />} 
+                                             onClick={(e) => {
+                                                 e.stopPropagation();
+                                                 handleDeleteMobileFromLib(n);
+                                             }}
+                                         />
+                                     </Space>
                                  </div>
                              );
                          })}
@@ -1039,6 +1071,83 @@ const VirtualNumbersTable = ({ standalone = false }) => {
      );
  };
 
+// ID 列表核心渲染组件
+const IdListRenderer = ({ data, onDelete, isModal = false }) => {
+    const dateColors = ['#1890ff', '#52c41a', '#f5222d', '#fa8c16', '#722ed1', '#13c2c2', '#eb2f96'];
+    
+    if (!data || data.length === 0) {
+        return <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>暂无ID列表数据</div>;
+    }
+
+    const escapeHtml = (text) => {
+        return String(text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    };
+
+    return (
+        <div className={isModal ? "idlist-renderer-modal" : ""}>
+            {data.map(item => {
+                const uniqueDates = Array.from(new Set(item.tickets.map(t => {
+                    const m = t.info.match(/\d{4}-\d{2}-\d{2}/);
+                    return m ? m[0] : null;
+                }).filter(d => d))).sort();
+
+                return (
+                    <div className="viewer-wrapper" key={item.itemId}>
+                        <div className="viewer-swipe-delete" onClick={() => onDelete && onDelete(item.itemId)}>删除</div>
+                        <div className="viewer-item viewer-card" style={{ padding: '15px' }}>
+                            <div className="idlist-sticky-header">
+                                <div className="viewer-row" style={{ marginBottom: '10px', alignItems: 'flex-start' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div className="viewer-text" style={{ fontSize: '16px', color: '#1890ff', whiteSpace: 'normal', wordBreak: 'break-all' }}>{item.title}</div>
+                                        <div className="viewer-sub">项目ID: {item.itemId}</div>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                    <button className="mini-btn" style={{ background: '#e6f7ff', color: '#1890ff' }} onClick={(e) => window.copyPlainText(e, item.itemId, '已复制项目ID')}>复制项目ID</button>
+                                    <button className="mini-btn" style={{ background: '#f6ffed', color: '#52c41a' }} onClick={(e) => window.copyProjectIds(e.target)}>复制票价ID</button>
+                                    <button className="mini-btn" style={{ background: '#f5f5f5', color: '#8c8c8c' }} onClick={(e) => window.clearProjectSelections(e.target)}>清空勾选</button>
+                                    <button className="mini-btn viewer-del-btn" style={{ background: '#fff1f0', color: '#f5222d', border: '1px solid #ffa39e' }} onClick={() => onDelete && onDelete(item.itemId)}>删除</button>
+                                </div>
+                            </div>
+                            <div className="idlist-items-container">
+                                {item.tickets.map(ticket => {
+                                    const dateMatch = ticket.info.match(/\d{4}-\d{2}-\d{2}/);
+                                    const date = dateMatch ? dateMatch[0] : null;
+                                    const dateIdx = date ? uniqueDates.indexOf(date) : -1;
+                                    const color = dateIdx !== -1 ? dateColors[dateIdx % dateColors.length] : '#222';
+                                    let displayInfo = escapeHtml(ticket.info).replace(/(\d+)(元)/g, '<span style="font-size: 18px; font-weight: bold; margin: 0 2px;">$1</span>$2');
+                                    
+                                    return (
+                                        <div 
+                                            className="viewer-member" 
+                                            key={ticket.ticketId}
+                                            onClick={(e) => window.toggleTicketCheckbox(e, e.currentTarget)} 
+                                            style={{ display: 'flex', alignItems: 'center', gap: '10px', borderTop: '1px solid #f0f0f0', padding: '10px 0', cursor: 'pointer' }}
+                                        >
+                                            <input 
+                                                type="checkbox" 
+                                                className="ticket-checkbox" 
+                                                value={ticket.ticketId} 
+                                                data-group={`${item.itemId}_${date || 'nodate'}`} 
+                                                onChange={(e) => window.handleCheckboxChange(e.target)} 
+                                                style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                                            />
+                                            <div style={{ flex: 1 }}>
+                                                <div className="viewer-text" style={{ fontSiz: '14px', color: color }} dangerouslySetInnerHTML={{ __html: displayInfo }}></div>
+                                                <div className="viewer-sub" style={{ fontSize: '12px', color: '#999' }}>ID: {ticket.ticketId}</div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
 // 票务系统组件
 const TicketingSystem = ({ standalone = false }) => {
     const [data, setData] = useState([]);
@@ -1054,6 +1163,12 @@ const TicketingSystem = ({ standalone = false }) => {
     const [parsedItems, setParsedItems] = useState([]);
     const [editingParsedIdx, setEditingParsedIdx] = useState(null);
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+    
+    // ID 列表弹窗状态
+    const [idListModalOpen, setIdListModalOpen] = useState(false);
+    const [idListSearchData, setIdListSearchData] = useState([]);
+    const [idListLoading, setIdListSearchLoading] = useState(false);
+    const [idListKeyword, setIdListKeyword] = useState("");
 
     useEffect(() => {
         checkAuth();
@@ -1061,6 +1176,35 @@ const TicketingSystem = ({ standalone = false }) => {
             window.hideLoading();
         }
     }, []);
+
+    const showIdListModal = async (keyword) => {
+        setIdListKeyword(keyword);
+        setIdListModalOpen(true);
+        setIdListSearchLoading(true);
+        try {
+            const res = await fetch("/api/idlist", { headers: { "ngrok-skip-browser-warning": "true" } });
+            const allData = await res.json();
+            
+            // 模拟 legacy.js 的过滤逻辑
+            const kw = keyword.toLowerCase().trim();
+            const keywords = kw.split(/\s+/).filter(k => k);
+            const filtered = allData.filter(item => {
+                const searchableText = [item.title || "", item.itemId || "", ...item.tickets.map(t => t.info || "")].join(" ").toLowerCase();
+                return keywords.every(kw => {
+                    if (searchableText.includes(kw)) return true;
+                    try {
+                        const pattern = kw.split('').map(char => char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*');
+                        return new RegExp(pattern, 'i').test(searchableText);
+                    } catch (e) { return false; }
+                });
+            });
+            setIdListSearchData(filtered);
+        } catch (e) {
+            message.error("加载ID列表失败");
+        } finally {
+            setIdListSearchLoading(false);
+        }
+    };
 
     const checkAuth = async () => {
         // 1. 优先检查本地持久化
@@ -1453,7 +1597,22 @@ const TicketingSystem = ({ standalone = false }) => {
 
     const columns = [
         { title: '#', key: 'index', width: 50, fixed: 'left', align: 'center', render: (_, __, index) => index + 1 },
-        { title: '演出名称', dataIndex: 'show_name', key: 'show_name', width: 200, align: 'center', ellipsis: true, render: (text) => (<a style={{ color: '#1890ff', cursor: 'pointer' }} onClick={() => window.showView('idlist', text)}>{text}</a>) },
+        { 
+            title: '演出名称', 
+            dataIndex: 'show_name', 
+            key: 'show_name', 
+            width: 200, 
+            align: 'center', 
+            ellipsis: true, 
+            render: (text) => (
+                <div 
+                    style={{ color: '#1890ff', cursor: 'pointer', fontWeight: 'bold' }} 
+                    onClick={() => showIdListModal(text)}
+                >
+                    {text}
+                </div>
+            )
+        },
         { title: '日期', dataIndex: 'show_date', key: 'show_date', width: 130, align: 'center' },
         { title: '观影人', dataIndex: 'viewers', key: 'viewers', width: 250, align: 'center', ellipsis: true, render: (text) => (<div style={{ whiteSpace: 'pre-wrap', fontSize: '13px', cursor: 'pointer' }} onClick={(e) => window.copyPlainText(e, text, '观影人信息已复制')}>{text}</div>) },
         { title: '配置码', dataIndex: 'config_code', key: 'config_code', width: 120, align: 'center', ellipsis: true, render: (text) => (<div style={{ cursor: 'pointer', color: '#1890ff' }} onClick={(e) => window.copyPlainText(e, text, '配置码已复制')}>{text || '-'}</div>) },
@@ -1598,6 +1757,397 @@ const TicketingSystem = ({ standalone = false }) => {
                 </Row>
             </Modal>
             <Modal title="身份认证" open={isAuthModalOpen} footer={null} closable={false}><Input.Password placeholder="请输入管理密码" onPressEnter={(e) => handleAuth(e.target.value)} /></Modal>
+            
+            <Modal
+                title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>ID 列表搜索结果</span>
+                        <Tag color="blue">{idListKeyword}</Tag>
+                    </div>
+                }
+                open={idListModalOpen}
+                onCancel={() => setIdListModalOpen(false)}
+                footer={null}
+                width={700}
+                bodyStyle={{ maxHeight: '70vh', overflowY: 'auto', padding: '20px 10px' }}
+                destroyOnClose
+            >
+                <div style={{ position: 'relative', minHeight: '200px' }}>
+                    {idListLoading ? (
+                        <div style={{ textAlign: 'center', padding: '50px' }}>加载中...</div>
+                    ) : (
+                        <IdListRenderer 
+                            data={idListSearchData} 
+                            isModal={true}
+                            onDelete={async (itemId) => {
+                                try {
+                                    await fetch(`/api/idlist/${itemId}`, { headers: { "ngrok-skip-browser-warning": "true" } });
+                                    message.success("删除成功");
+                                    // 重新刷新弹窗内数据
+                                    showIdListModal(idListKeyword);
+                                } catch (e) {
+                                    message.error("删除失败");
+                                }
+                            }} 
+                        />
+                    )}
+                </div>
+            </Modal>
+        </div>
+    );
+};
+
+// --- 演出日程管理组件 ---
+const ShowScheduleModule = () => {
+    const [data, setData] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [parsing, setParsing] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    const [pendingShows, setPendingShows] = useState([]); // 待保存的演出列表
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await fetch("/api/shows");
+            const result = await res.json();
+            setData(result || []);
+        } catch (e) {
+            message.error("加载数据失败");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    const handleSave = async () => {
+        // 验证数据
+        const invalid = pendingShows.some(s => !s.show_name || !s.sale_time);
+        if (invalid) {
+            message.warning("请完善所有演出的名称和时间");
+            return;
+        }
+
+        try {
+            if (editingId) {
+                // 编辑单条数据
+                const show = pendingShows[0];
+                const res = await fetch(`/api/shows/${editingId}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        show_name: show.show_name,
+                        sale_time: dayjs(show.sale_time).format('YYYY-MM-DD HH:mm:ss')
+                    })
+                });
+                const result = await res.json();
+                if (result.status === "success") message.success("更新成功");
+            } else {
+                // 批量新增
+                const items = pendingShows.map(s => ({
+                    show_name: s.show_name,
+                    sale_time: dayjs(s.sale_time).format('YYYY-MM-DD HH:mm:ss')
+                }));
+                const res = await fetch("/api/shows/bulk", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ items })
+                });
+                const result = await res.json();
+                if (result.status === "success") message.success(result.msg);
+            }
+            
+            setIsModalOpen(false);
+            setEditingId(null);
+            setPendingShows([]);
+            fetchData();
+            window.dispatchEvent(new CustomEvent('shows-updated'));
+        } catch (e) {
+            message.error("保存失败");
+        }
+    };
+
+    const handleDelete = async (id) => {
+        try {
+            await fetch(`/api/shows/${id}`, { method: "DELETE" });
+            message.success("删除成功");
+            fetchData();
+            window.dispatchEvent(new CustomEvent('shows-updated'));
+        } catch (e) {
+            message.error("删除失败");
+        }
+    };
+
+    const handleParseImage = async (file) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            const base64 = reader.result;
+            setParsing(true);
+            try {
+                const res = await fetch("/api/shows/parse_image", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ image: base64 })
+                });
+                const result = await res.json();
+                if (result.status === "success" && result.data && result.data.length > 0) {
+                    const newItems = result.data.map((item, index) => ({
+                        tempId: Date.now() + index,
+                        show_name: item.show_name,
+                        sale_time: dayjs(item.sale_time)
+                    }));
+                    // 如果当前列表只有一条空白数据，则替换它；否则追加
+                    setPendingShows(prev => {
+                        if (prev.length === 1 && !prev[0].show_name && !prev[0].sale_time) {
+                            return newItems;
+                        }
+                        return [...prev, ...newItems];
+                    });
+                    message.success(`成功解析出 ${result.data.length} 个演出`);
+                } else {
+                    message.warning(result.msg || "解析失败");
+                }
+            } catch (e) {
+                message.error("AI 解析请求失败");
+            } finally {
+                setParsing(false);
+            }
+        };
+        return false;
+    };
+
+    const addManualItem = () => {
+        setPendingShows(prev => [...prev, { tempId: Date.now(), show_name: '', sale_time: null }]);
+    };
+
+    const removePendingItem = (tempId) => {
+        setPendingShows(prev => prev.filter(item => item.tempId !== tempId));
+    };
+
+    const updatePendingItem = (tempId, field, value) => {
+        setPendingShows(prev => prev.map(item => 
+            item.tempId === tempId || (editingId && prev.indexOf(item) === 0) 
+                ? { ...item, [field]: value } 
+                : item
+        ));
+    };
+
+    const columns = [
+        { title: '演出名称', dataIndex: 'show_name', key: 'show_name' },
+        { title: '开票时间', dataIndex: 'sale_time', key: 'sale_time' },
+        { 
+            title: '操作', 
+            key: 'action', 
+            render: (_, record) => (
+                <Space>
+                    <Button size="small" type="link" icon={<EditOutlined />} onClick={() => {
+                        setEditingId(record.id);
+                        setPendingShows([{
+                            show_name: record.show_name,
+                            sale_time: dayjs(record.sale_time)
+                        }]);
+                        setIsModalOpen(true);
+                    }}>编辑</Button>
+                    <Popconfirm title="确定删除吗？" onConfirm={() => handleDelete(record.id)}>
+                        <Button size="small" type="link" danger icon={<DeleteOutlined />}>删除</Button>
+                    </Popconfirm>
+                </Space>
+            )
+        }
+    ];
+
+    return (
+        <div className="ticketing-container">
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => {
+                    setEditingId(null);
+                    setPendingShows([{ tempId: Date.now(), show_name: '', sale_time: null }]);
+                    setIsModalOpen(true);
+                }}>新增演出</Button>
+                <Button icon={<DashboardOutlined />} onClick={fetchData}>刷新列表</Button>
+            </div>
+
+            <Table 
+                columns={columns} 
+                dataSource={data} 
+                rowKey="id" 
+                loading={loading}
+                pagination={false}
+            />
+
+            <Modal
+                title={editingId ? "编辑演出日程" : "新增演出日程"}
+                open={isModalOpen}
+                onCancel={() => setIsModalOpen(false)}
+                onOk={handleSave}
+                width={700}
+                okText="保存全部"
+            >
+                {!editingId && (
+                    <div style={{ marginBottom: 16, padding: '12px', background: '#f0f5ff', borderRadius: '8px', border: '1px dashed #adc6ff' }}>
+                        <div style={{ fontSize: '12px', color: '#2f54eb', marginBottom: '8px' }}>📸 AI 识图配置（支持解析截图中的多个演出）：</div>
+                        <Upload 
+                            beforeUpload={handleParseImage} 
+                            showUploadList={false}
+                            accept="image/*"
+                        >
+                            <Button icon={<FileImageOutlined />} loading={parsing}>上传图片解析</Button>
+                        </Upload>
+                    </div>
+                )}
+
+                <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontWeight: 'bold' }}>待保存演出列表：</div>
+                    {!editingId && (
+                        <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={addManualItem}>添加一条</Button>
+                    )}
+                </div>
+
+                <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '5px' }}>
+                    {pendingShows.map((item, index) => (
+                        <div 
+                            key={item.tempId || index} 
+                            style={{ 
+                                display: 'flex', 
+                                gap: '10px', 
+                                marginBottom: '10px', 
+                                padding: '12px', 
+                                background: '#f9f9f9', 
+                                borderRadius: '8px',
+                                position: 'relative'
+                            }}
+                        >
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>演出名称</div>
+                                <Input 
+                                    placeholder="输入演出名称" 
+                                    value={item.show_name} 
+                                    onChange={e => updatePendingItem(item.tempId, 'show_name', e.target.value)}
+                                />
+                            </div>
+                            <div style={{ width: '220px' }}>
+                                <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>开票时间</div>
+                                <DatePicker 
+                                    showTime 
+                                    style={{ width: '100%' }} 
+                                    format="YYYY-MM-DD HH:mm:ss" 
+                                    value={item.sale_time}
+                                    onChange={val => updatePendingItem(item.tempId, 'sale_time', val)}
+                                />
+                            </div>
+                            {!editingId && pendingShows.length > 1 && (
+                                <Button 
+                                    type="text" 
+                                    danger 
+                                    icon={<DeleteOutlined />} 
+                                    style={{ marginTop: '22px' }}
+                                    onClick={() => removePendingItem(item.tempId)}
+                                />
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </Modal>
+        </div>
+    );
+};
+
+// --- 全局倒计时悬浮组件 ---
+const CountdownFloating = () => {
+    const [allFutureShows, setAllFutureShows] = useState([]);
+    const [timeLefts, setTimeLefts] = useState({});
+    const [isExpanded, setIsExpanded] = useState(false);
+    const timerRef = useRef(null);
+
+    const updateShows = useCallback(async () => {
+        try {
+            const res = await fetch("/api/shows");
+            const allShows = await res.json();
+            const now = dayjs();
+            
+            // 过滤并排序未来的演出
+            const futureShows = allShows
+                .filter(s => dayjs(s.sale_time).isAfter(now))
+                .sort((a, b) => dayjs(a.sale_time).diff(dayjs(b.sale_time)));
+            
+            setAllFutureShows(futureShows);
+        } catch (e) {
+            console.error("Fetch shows failed", e);
+        }
+    }, []);
+
+    useEffect(() => {
+        updateShows();
+        window.addEventListener('shows-updated', updateShows);
+        const fetchTimer = setInterval(updateShows, 30000);
+        return () => {
+            window.removeEventListener('shows-updated', updateShows);
+            clearInterval(fetchTimer);
+        };
+    }, [updateShows]);
+
+    useEffect(() => {
+        if (timerRef.current) clearInterval(timerRef.current);
+        
+        timerRef.current = setInterval(() => {
+            const now = dayjs();
+            const newTimeLefts = {};
+            allFutureShows.forEach(show => {
+                const diff = dayjs(show.sale_time).diff(now);
+                if (diff <= 0) {
+                    newTimeLefts[show.id] = "已开票";
+                } else {
+                    const dur = dayjs.duration(diff);
+                    const days = Math.floor(dur.asDays());
+                    const hours = dur.hours();
+                    const minutes = dur.minutes();
+                    const seconds = dur.seconds();
+                    
+                    let str = "";
+                    if (days > 0) str += `${days}天`;
+                    str += `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    newTimeLefts[show.id] = str;
+                }
+            });
+            setTimeLefts(newTimeLefts);
+        }, 1000);
+
+        return () => clearInterval(timerRef.current);
+    }, [allFutureShows]);
+
+    if (allFutureShows.length === 0) return null;
+
+    const mainShow = allFutureShows[0];
+
+    return (
+        <div 
+            className="countdown-floating" 
+            onClick={() => setIsExpanded(!isExpanded)}
+        >
+            <div className="countdown-single-line">
+                <div className="countdown-name">{mainShow.show_name}</div>
+                <div className="countdown-time">{timeLefts[mainShow.id] || '--:--:--'}</div>
+                {allFutureShows.length > 1 && (
+                    <div className="countdown-expand-icon">
+                        {isExpanded ? <MinusOutlined /> : <PlusOutlined />}
+                    </div>
+                )}
+            </div>
+            
+            {isExpanded && allFutureShows.length > 1 && (
+                <div className="countdown-list">
+                    {allFutureShows.slice(1).map(show => (
+                        <div key={show.id} className="countdown-item">
+                            <div className="countdown-name">{show.show_name}</div>
+                            <div className="countdown-time">{timeLefts[show.id] || '--:--:--'}</div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
@@ -1650,6 +2200,7 @@ const Layout = ({ children }) => {
 
     return (
         <div className="app-layout">
+            <CountdownFloating />
             <CloudShortcutTool />
             {children}
         </div>
@@ -1670,9 +2221,19 @@ export default function App() {
                             <VirtualNumbersTable standalone={true} />
                         </ViewWithTitle>
                     } />
+                    <Route path="/shows" element={
+                        <ViewWithTitle title="配置演出日程" viewName="shows">
+                            <ShowScheduleModule />
+                        </ViewWithTitle>
+                    } />
                     <Route path="/ticketing" element={
                         <ViewWithTitle title="票务管理系统" viewName="ticketing">
                             <TicketingSystem standalone={true} />
+                        </ViewWithTitle>
+                    } />
+                    <Route path="/chat_generator" element={
+                        <ViewWithTitle title="微信聊天记录生成器" viewName="chat_generator">
+                            <ChatGenerator />
                         </ViewWithTitle>
                     } />
                     <Route path="*" element={<Navigate to="/" replace />} />

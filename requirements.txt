@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+httpx
+python-multipart
+jinja2
+# 如果使用了 AI 或其他特殊库请添加
+# openai (如果有)

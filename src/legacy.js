@@ -20,7 +20,9 @@ window.showView = function(view, searchKeyword = "") {
         'viewers': '/viewers',
         'idlist': '/idlist',
         'virtual_numbers': '/virtual_numbers',
-        'ticketing': '/ticketing'
+        'shows': '/shows',
+        'ticketing': '/ticketing',
+        'chat_generator': '/chat_generator'
     };
 
     const path = routeMap[view] || '/';

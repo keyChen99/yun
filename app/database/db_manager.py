@@ -1,9 +1,10 @@
 import sqlite3
 import json
 import os
+import re
 from datetime import datetime
 
-DB_FILE = "stock.db"
+DB_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "stock.db")
 
 def get_db():
     # 增加 timeout 参数（单位秒），防止数据库忙时直接报错，提高并发稳定性
@@ -12,7 +13,22 @@ def get_db():
     return conn
 
 # 1. 演唱会库存操作
+def init_concerts_db():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS concerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            data TEXT,
+            updated_at TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
 def save_concert(concert_dict):
+    init_concerts_db()
     conn = get_db()
     cursor = conn.cursor()
     # 确保 dict 中有 id，如果没有则生成
@@ -420,6 +436,16 @@ def init_virtual_numbers_db():
             bg_color TEXT DEFAULT ''
         )
     ''')
+
+    # 9. 演出日程表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS show_schedules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            show_name TEXT NOT NULL,
+            sale_time TEXT NOT NULL,
+            added_time TEXT
+        )
+    ''')
     
     # 初始内置手机号
     initial_mobiles = [
@@ -513,6 +539,19 @@ def delete_from_mobile_library(phone):
     conn.commit()
     conn.close()
 
+def move_mobile_to_top(phone):
+    """将手机号置顶（通过修改 ID 实现，简单有效）"""
+    conn = get_db()
+    cursor = conn.cursor()
+    # 找到当前最小的 ID
+    cursor.execute("SELECT MIN(id) FROM mobile_library")
+    min_id = cursor.fetchone()[0] or 0
+    # 将目标号码的 ID 改为最小 ID - 1
+    cursor.execute("UPDATE mobile_library SET id = ? WHERE phone = ?", (min_id - 1, phone))
+    conn.commit()
+    conn.close()
+    return True
+
 def update_virtual_number_notes(item_id, notes):
     """更新虚拟号备注"""
     conn = get_db()
@@ -566,12 +605,13 @@ def claim_virtual_number(machine_code):
     conn = get_db()
     cursor = conn.cursor()
     
-    # 1. 查找最合适的号码
+    # 1. 查找最合适的号码：机器码为空、注销次数 < 3 且 没有备注
     query = """
         SELECT id, phone, link, usage_count 
         FROM virtual_numbers 
         WHERE (machine_code = '' OR machine_code IS NULL) 
         AND cancellation_count < 3 
+        AND (notes = '' OR notes IS NULL)
         ORDER BY usage_count ASC, id DESC 
         LIMIT 1
     """
@@ -731,6 +771,65 @@ def get_used_mobile_numbers():
     conn.close()
     return [row[0] for row in rows]
 
+def get_vn_by_machine_code(machine_code):
+    """根据机器码查找虚拟号记录"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM virtual_numbers WHERE machine_code = ?", (machine_code,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def assign_mobile_by_priority(item_id, machine_code):
+    """
+    为指定记录分配手机号：
+    1. 获取手机号库
+    2. 获取所有已分配的完整手机号字符串
+    3. 优先级：优酷-xxx > 淘宝-xxx (同个手机号不同类型可重复分配)
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # 1. 获取手机号库
+    cursor.execute("SELECT phone FROM mobile_library ORDER BY id ASC")
+    library_phones = [row[0] for row in cursor.fetchall()]
+    
+    # 2. 获取所有已分配的完整手机号字符串
+    cursor.execute("SELECT mobile FROM virtual_numbers WHERE mobile != '' AND mobile IS NOT NULL")
+    all_assigned_mobiles = {row[0] for row in cursor.fetchall()}
+    
+    target_mobile = ""
+    mobile_type = ""
+    pure_phone = ""
+    
+    # 3. 优先尝试分配“优酷”
+    for p in library_phones:
+        yk_mobile = f"优酷-{p}"
+        if yk_mobile not in all_assigned_mobiles:
+            target_mobile = yk_mobile
+            mobile_type = "优酷"
+            pure_phone = p
+            break
+            
+    # 4. 如果优酷都用完了，再尝试分配“淘宝”
+    if not target_mobile:
+        for p in library_phones:
+            tb_mobile = f"淘宝-{p}"
+            if tb_mobile not in all_assigned_mobiles:
+                target_mobile = tb_mobile
+                mobile_type = "淘宝"
+                pure_phone = p
+                break
+                
+    if target_mobile:
+        cursor.execute("UPDATE virtual_numbers SET mobile = ? WHERE id = ?", (target_mobile, item_id))
+        conn.commit()
+        conn.close()
+        return {"type": mobile_type, "phone": pure_phone}
+        
+    conn.close()
+    return None
+
 def decrement_cancellation_count(item_id):
     conn = get_db()
     cursor = conn.cursor()
@@ -744,3 +843,62 @@ def clear_all_virtual_numbers():
     cursor.execute("DELETE FROM virtual_numbers")
     conn.commit()
     conn.close()
+
+# 10. 演出日程操作
+def init_show_schedules_db():
+    init_virtual_numbers_db() # 实际上 init_virtual_numbers_db 已经包含了创建表逻辑
+
+def get_all_show_schedules():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM show_schedules ORDER BY sale_time ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def save_show_schedule(show_name, sale_time):
+    conn = get_db()
+    cursor = conn.cursor()
+    added_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute(
+        "INSERT INTO show_schedules (show_name, sale_time, added_time) VALUES (?, ?, ?)",
+        (show_name, sale_time, added_time)
+    )
+    conn.commit()
+    conn.close()
+    return True
+
+def save_shows_bulk(items):
+    """批量保存演出日程"""
+    if not items:
+        return 0
+    conn = get_db()
+    cursor = conn.cursor()
+    added_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    data = [(item["show_name"], item["sale_time"], added_time) for item in items]
+    cursor.executemany(
+        "INSERT INTO show_schedules (show_name, sale_time, added_time) VALUES (?, ?, ?)",
+        data
+    )
+    conn.commit()
+    conn.close()
+    return len(items)
+
+def delete_show_schedule(item_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM show_schedules WHERE id = ?", (item_id,))
+    conn.commit()
+    conn.close()
+    return True
+
+def update_show_schedule(item_id, show_name, sale_time):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE show_schedules SET show_name = ?, sale_time = ? WHERE id = ?",
+        (show_name, sale_time, item_id)
+    )
+    conn.commit()
+    conn.close()
+    return True
