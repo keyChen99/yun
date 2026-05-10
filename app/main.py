@@ -56,15 +56,38 @@ app.include_router(shows.router)
 
 # 挂载 Vite 构建的静态资源
 if os.path.exists("dist"):
-    app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")
+    assets_path = "dist/assets"
+    if os.path.exists(assets_path):
+        app.mount("/assets", StaticFiles(directory=assets_path), name="assets")
+    else:
+        logger.warning(f"目录 {assets_path} 不存在，跳过挂载静态资源")
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "timestamp": asyncio.get_event_loop().time()}
 
 @app.get("/")
 async def read_index():
-    target_file = "dist/index.html" if os.path.exists("dist/index.html") else "index.html"
-    return FileResponse(target_file, headers={
-        "Cache-Control": "no-cache",
-        "Pragma": "no-cache"
-    })
+    logger.info("收到首页访问请求")
+    # 优先检查 dist/index.html
+    paths_to_check = ["dist/index.html", "index.html", "app/ui/index.html"]
+    target_file = None
+    
+    for p in paths_to_check:
+        if os.path.exists(p):
+            target_file = p
+            break
+            
+    if target_file:
+        logger.info(f"返回文件: {target_file}")
+        return FileResponse(target_file, headers={
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache"
+        })
+    
+    logger.warning("未找到任何 index.html 文件，返回临时状态页")
+    return {"status": "online", "msg": "后端已启动，但前端静态文件尚未就绪，请检查构建日志。"}
+
 
 @app.post("/api/auth")
 async def check_auth(request: Request):

@@ -8,4 +8,4 @@ cmds = ["npm install", "python3 -m pip install -r requirements.txt"]
 cmds = ["npm run build"]
 
 [start]
-cmd = "python3 -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+cmd = "python3 -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"
