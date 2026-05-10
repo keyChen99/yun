@@ -418,6 +418,19 @@ def init_virtual_numbers_db():
         )
     ''')
     # 检查字段是否存在（针对旧数据库迁移）
+    cursor.execute("PRAGMA table_info(virtual_numbers)")
+    vn_columns = [row[1] for row in cursor.fetchall()]
+    if 'sms_code' not in vn_columns:
+        cursor.execute("ALTER TABLE virtual_numbers ADD COLUMN sms_code TEXT")
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS mobile_library (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            phone TEXT UNIQUE,
+            priority INTEGER DEFAULT 0
+        )
+    ''')
+    # 检查字段是否存在（针对旧数据库迁移）
     cursor.execute("PRAGMA table_info(mobile_library)")
     lib_columns = [row[1] for row in cursor.fetchall()]
     if 'priority' not in lib_columns:
@@ -427,9 +440,19 @@ def init_virtual_numbers_db():
         CREATE TABLE IF NOT EXISTS quick_copy_tools (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             label TEXT,
-            template TEXT
+            template TEXT,
+            color TEXT,
+            bg_color TEXT
         )
     ''')
+    # 检查字段是否存在
+    cursor.execute("PRAGMA table_info(quick_copy_tools)")
+    qc_columns = [row[1] for row in cursor.fetchall()]
+    if 'color' not in qc_columns:
+        cursor.execute("ALTER TABLE quick_copy_tools ADD COLUMN color TEXT")
+    if 'bg_color' not in qc_columns:
+        cursor.execute("ALTER TABLE quick_copy_tools ADD COLUMN bg_color TEXT")
+
     conn.commit()
     conn.close()
 
@@ -654,3 +677,108 @@ def add_to_mobile_library(phone):
         return False
     finally:
         conn.close()
+
+def delete_from_mobile_library(phone):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM mobile_library WHERE phone = ?", (phone,))
+    conn.commit()
+    conn.close()
+
+def move_mobile_to_top(phone):
+    conn = get_db()
+    cursor = conn.cursor()
+    # 获取当前最大优先级并+1
+    cursor.execute("SELECT MAX(priority) FROM mobile_library")
+    max_p = cursor.fetchone()[0] or 0
+    cursor.execute("UPDATE mobile_library SET priority = ? WHERE phone = ?", (max_p + 1, phone))
+    conn.commit()
+    conn.close()
+
+def decrement_cancellation_count(item_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE virtual_numbers SET cancellation_count = MAX(0, cancellation_count - 1) WHERE id = ?", (item_id,))
+    conn.commit()
+    conn.close()
+
+def update_virtual_number_notes(item_id, notes):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE virtual_numbers SET notes = ? WHERE id = ?", (notes, item_id))
+    conn.commit()
+    conn.close()
+
+def update_virtual_number_mobile(item_id, mobile):
+    conn = get_db()
+    cursor = conn.cursor()
+    # 更新手机号
+    cursor.execute("UPDATE virtual_numbers SET mobile = ? WHERE id = ?", (mobile, item_id))
+    
+    # 自动清理：如果该手机号在其他记录中也存在（且不是当前这条），则删除旧的记录，保持手机号唯一性（业务逻辑可选）
+    deleted_count = 0
+    if mobile:
+        cursor.execute("DELETE FROM virtual_numbers WHERE mobile = ? AND id != ?", (mobile, item_id))
+        deleted_count = cursor.rowcount
+        
+    conn.commit()
+    conn.close()
+    return deleted_count
+
+def update_virtual_number_machine_code(item_id, machine_code):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE virtual_numbers SET machine_code = ? WHERE id = ?", (machine_code, item_id))
+    conn.commit()
+    conn.close()
+
+def update_virtual_number_sms(item_id, sms_code):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE virtual_numbers SET sms_code = ? WHERE id = ?", (sms_code, item_id))
+    conn.commit()
+    conn.close()
+
+def clear_all_virtual_numbers():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM virtual_numbers")
+    conn.commit()
+    conn.close()
+
+def get_quick_copy_tools():
+    init_virtual_numbers_db()
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, label, template as content, color, bg_color FROM quick_copy_tools ORDER BY id ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def add_quick_copy_tool(label, content, color='', bg_color=''):
+    init_virtual_numbers_db()
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO quick_copy_tools (label, template, color, bg_color) VALUES (?, ?, ?, ?)",
+        (label, content, color, bg_color)
+    )
+    conn.commit()
+    conn.close()
+
+def update_quick_copy_tool(tool_id, label, content, color='', bg_color=''):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE quick_copy_tools SET label = ?, template = ?, color = ?, bg_color = ? WHERE id = ?",
+        (label, content, color, bg_color, tool_id)
+    )
+    conn.commit()
+    conn.close()
+
+def delete_quick_copy_tool(tool_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM quick_copy_tools WHERE id = ?", (tool_id,))
+    conn.commit()
+    conn.close()
