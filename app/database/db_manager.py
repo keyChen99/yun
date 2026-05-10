@@ -750,7 +750,15 @@ def get_quick_copy_tools():
     init_virtual_numbers_db()
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, label, template as content, color, bg_color FROM quick_copy_tools ORDER BY id ASC")
+    # 检查字段名
+    cursor.execute("PRAGMA table_info(quick_copy_tools)")
+    columns = [row[1] for row in cursor.fetchall()]
+    
+    # 动态构建 SQL，兼容 template 或 content 字段
+    content_field = "template" if "template" in columns else "content"
+    query = f"SELECT id, label, {content_field} as content, color, bg_color FROM quick_copy_tools ORDER BY id ASC"
+    
+    cursor.execute(query)
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]
