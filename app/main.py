@@ -1,6 +1,14 @@
 import os
 import asyncio
+import logging
 from fastapi import FastAPI, Request
+
+# 配置基础日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+logger.info("正在加载应用模块...")
+
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -10,14 +18,22 @@ from app.database import db_manager as db
 from app.routers import concerts, viewers, ticketing, virtual_numbers, idlist, rpa, shows
 
 # 初始化 FastAPI 应用
+print("正在启动 FastAPI 应用...")
 app = FastAPI()
 
-# 初始化数据库
-db.init_ticketing_db()
-db.init_concerts_db()
-db.init_virtual_numbers_db()
-db.init_known_patterns_db()
-db.init_show_schedules_db()
+try:
+    # 初始化数据库
+    print("正在初始化数据库...")
+    db.init_ticketing_db()
+    db.init_concerts_db()
+    db.init_virtual_numbers_db()
+    db.init_known_patterns_db()
+    db.init_show_schedules_db()
+    print("数据库初始化完成。")
+except Exception as e:
+    print(f"数据库初始化失败: {e}")
+    # 继续启动，或者根据需要抛出异常
+
 
 # 解决跨域问题
 app.add_middleware(
