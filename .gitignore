@@ -34,7 +34,7 @@ wheels/
 *.egg
 
 # Databases
-*.db
+# *.db
 *.sqlite3
 
 # OS metadata

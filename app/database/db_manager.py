@@ -11,11 +11,21 @@ if not DB_FILE:
     DB_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "stock.db")
 
 # 确保数据库所在目录存在
-db_dir = os.path.dirname(DB_FILE)
-if db_dir and not os.path.exists(db_dir):
-    os.makedirs(db_dir, exist_ok=True)
-
-def get_db():
+ db_dir = os.path.dirname(DB_FILE)
+ if db_dir and not os.path.exists(db_dir):
+     os.makedirs(db_dir, exist_ok=True)
+ 
++# 自动迁移逻辑：如果持久化目录中没有数据库，尝试从项目根目录拷贝初始数据库
++REPO_DB = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "stock.db")
++if os.environ.get("DB_PATH") and not os.path.exists(DB_FILE) and os.path.exists(REPO_DB):
++    import shutil
++    try:
++        shutil.copy2(REPO_DB, DB_FILE)
++        print(f"成功将初始数据库从 {REPO_DB} 迁移至 {DB_FILE}")
++    except Exception as e:
++        print(f"数据库迁移失败: {e}")
++
+ def get_db():
     # 增加 timeout 参数（单位秒），防止数据库忙时直接报错，提高并发稳定性
     conn = sqlite3.connect(DB_FILE, timeout=30)
     conn.row_factory = sqlite3.Row
