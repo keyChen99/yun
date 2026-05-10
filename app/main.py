@@ -69,24 +69,32 @@ async def health_check():
 @app.get("/")
 async def read_index():
     logger.info("收到首页访问请求")
-    # 优先检查 dist/index.html
-    paths_to_check = ["dist/index.html", "index.html", "app/ui/index.html"]
-    target_file = None
     
-    for p in paths_to_check:
-        if os.path.exists(p):
-            target_file = p
-            break
-            
-    if target_file:
-        logger.info(f"返回文件: {target_file}")
+    # 打印当前目录下存在的文件，帮助调试
+    current_files = os.listdir(".")
+    logger.info(f"当前目录文件列表: {current_files}")
+    if "dist" in current_files:
+        logger.info(f"dist 目录内容: {os.listdir('dist')}")
+
+    # 严格检查编译后的文件
+    target_file = "dist/index.html"
+    if os.path.exists(target_file):
+        logger.info(f"成功找到编译后的文件: {target_file}")
         return FileResponse(target_file, headers={
             "Cache-Control": "no-cache",
             "Pragma": "no-cache"
         })
     
-    logger.warning("未找到任何 index.html 文件，返回临时状态页")
-    return {"status": "online", "msg": "后端已启动，但前端静态文件尚未就绪，请检查构建日志。"}
+    logger.error("!!! 关键错误: 未找到 dist/index.html，说明前端构建可能失败了 !!!")
+    return {
+        "status": "error", 
+        "msg": "前端构建产物丢失", 
+        "debug_info": {
+            "current_dir": os.getcwd(),
+            "files": current_files
+        }
+    }
+
 
 
 @app.post("/api/auth")
