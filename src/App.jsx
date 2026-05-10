@@ -21,6 +21,7 @@ import './App.css';
 import ChatGenerator from './ChatGenerator';
 
 
+
 // --- 路由辅助组件 ---
 const LegacyViewWrapper = ({ viewId, onMount }) => {
     useEffect(() => {
