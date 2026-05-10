@@ -1,20 +1,16 @@
 [phases.setup]
-nixPkgs = ["python311", "nodejs_20", "gcc"]
+nixPkgs = ["python311", "nodejs_20"]
 
 [phases.install]
 cmds = [
-    "python3 -m venv /app/.venv",
-    "/app/.venv/bin/pip install --upgrade pip",
-    "/app/.venv/bin/pip install -r requirements.txt",
-    "npm install"
+    "npm install",
+    "pip install -r requirements.txt"
 ]
 
 [phases.build]
-dependsOn = ["install"]
 cmds = [
-    "NODE_OPTIONS='--max-old-space-size=1024' npm run build",
-    "ls -la dist || echo 'dist 目录未生成'"
+    "npm run build"
 ]
 
 [start]
-cmd = "/app/.venv/bin/python3 -m uvicorn app.main:app --host 0.0.0.0 --port $PORT --log-level debug"
+cmd = "python3 -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
