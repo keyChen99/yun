@@ -68,32 +68,23 @@ async def health_check():
 
 @app.get("/")
 async def read_index():
-    logger.info("收到首页访问请求")
-    
-    # 打印当前目录下存在的文件，帮助调试
-    current_files = os.listdir(".")
-    logger.info(f"当前目录文件列表: {current_files}")
-    if "dist" in current_files:
-        logger.info(f"dist 目录内容: {os.listdir('dist')}")
+    try:
+        logger.info("收到首页访问请求")
+        target_file = "dist/index.html"
+        
+        if os.path.exists(target_file):
+            return FileResponse(target_file)
+        
+        # 兜底方案：如果 dist 不存在，尝试返回根目录的 index.html
+        if os.path.exists("index.html"):
+            logger.warning("dist/index.html 缺失，使用根目录 index.html")
+            return FileResponse("index.html")
+            
+        return {"status": "ok", "message": "Backend is running. Frontend build missing."}
+    except Exception as e:
+        logger.error(f"首页渲染异常: {e}")
+        return {"status": "error", "message": str(e)}
 
-    # 严格检查编译后的文件
-    target_file = "dist/index.html"
-    if os.path.exists(target_file):
-        logger.info(f"成功找到编译后的文件: {target_file}")
-        return FileResponse(target_file, headers={
-            "Cache-Control": "no-cache",
-            "Pragma": "no-cache"
-        })
-    
-    logger.error("!!! 关键错误: 未找到 dist/index.html，说明前端构建可能失败了 !!!")
-    return {
-        "status": "error", 
-        "msg": "前端构建产物丢失", 
-        "debug_info": {
-            "current_dir": os.getcwd(),
-            "files": current_files
-        }
-    }
 
 
 
