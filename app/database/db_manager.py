@@ -577,8 +577,8 @@ def claim_virtual_number(machine_code):
         conn.close()
         return dict(row)
     
-    # 2. 找一个未绑定的号码（优先使用 usage_count 较小的）
-    cursor.execute("SELECT * FROM virtual_numbers WHERE machine_code IS NULL OR machine_code = '' ORDER BY usage_count ASC, id ASC LIMIT 1")
+    # 2. 找一个未绑定的号码（优先使用 usage_count 较小的，同等次数下优先使用最新的 ID）
+    cursor.execute("SELECT * FROM virtual_numbers WHERE machine_code IS NULL OR machine_code = '' ORDER BY usage_count ASC, id DESC LIMIT 1")
     row = cursor.fetchone()
     if row:
         record_id = row["id"]
