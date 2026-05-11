@@ -1074,7 +1074,7 @@ const VirtualNumbersTable = ({ standalone = false }) => {
  };
 
 // ID 列表核心渲染组件
-const IdListRenderer = ({ data, onDelete, isModal = false }) => {
+const IdListRenderer = ({ data, onDelete, onUpdateTitle, isModal = false }) => {
     const dateColors = ['#1890ff', '#52c41a', '#f5222d', '#fa8c16', '#722ed1', '#13c2c2', '#eb2f96'];
     
     if (!data || data.length === 0) {
@@ -1083,6 +1083,31 @@ const IdListRenderer = ({ data, onDelete, isModal = false }) => {
 
     const escapeHtml = (text) => {
         return String(text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    };
+
+    const handleTitleEdit = (item) => {
+        Modal.confirm({
+            title: '修改演出名称',
+            icon: <EditOutlined />,
+            content: (
+                <Input 
+                    defaultValue={item.title} 
+                    onChange={(e) => (window._temp_new_title = e.target.value)} 
+                    placeholder="请输入新的演出名称"
+                    style={{ marginTop: 15 }}
+                />
+            ),
+            onOk: async () => {
+                const newTitle = window._temp_new_title || item.title;
+                if (newTitle && newTitle !== item.title) {
+                    await onUpdateTitle(item.itemId, newTitle);
+                }
+                delete window._temp_new_title;
+            },
+            onCancel: () => {
+                delete window._temp_new_title;
+            }
+        });
     };
 
     return (
@@ -1100,7 +1125,10 @@ const IdListRenderer = ({ data, onDelete, isModal = false }) => {
                             <div className="idlist-sticky-header">
                                 <div className="viewer-row" style={{ marginBottom: '10px', alignItems: 'flex-start' }}>
                                     <div style={{ flex: 1 }}>
-                                        <div className="viewer-text" style={{ fontSize: '16px', color: '#1890ff', whiteSpace: 'normal', wordBreak: 'break-all' }}>{item.title}</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <div className="viewer-text" style={{ fontSize: '16px', color: '#1890ff', whiteSpace: 'normal', wordBreak: 'break-all', flex: 1 }}>{item.title}</div>
+                                            <Button size="small" type="text" icon={<EditOutlined style={{ fontSize: '12px', color: '#999' }} />} onClick={() => handleTitleEdit(item)} />
+                                        </div>
                                         <div className="viewer-sub">项目ID: {item.itemId}</div>
                                     </div>
                                 </div>
@@ -1781,9 +1809,31 @@ const TicketingSystem = ({ standalone = false }) => {
                         <IdListRenderer 
                             data={idListSearchData} 
                             isModal={true}
+                            onUpdateTitle={async (itemId, newTitle) => {
+                                try {
+                                    const res = await fetch(`/api/idlist/${itemId}/title`, {
+                                        method: 'PATCH',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ title: newTitle })
+                                    });
+                                    const result = await res.json();
+                                    if (result.status === "success") {
+                                        message.success("标题更新成功");
+                                        // 刷新数据
+                                        showIdListModal(idListKeyword);
+                                    } else {
+                                        message.error(result.msg);
+                                    }
+                                } catch (e) {
+                                    message.error("更新失败");
+                                }
+                            }}
                             onDelete={async (itemId) => {
                                 try {
-                                    await fetch(`/api/idlist/${itemId}`, { headers: { "ngrok-skip-browser-warning": "true" } });
+                                    await fetch(`/api/idlist/${itemId}`, { 
+                                        method: 'DELETE',
+                                        headers: { "ngrok-skip-browser-warning": "true" } 
+                                    });
                                     message.success("删除成功");
                                     // 重新刷新弹窗内数据
                                     showIdListModal(idListKeyword);

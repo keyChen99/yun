@@ -373,6 +373,13 @@ def delete_id_project(itemId):
     conn.commit()
     conn.close()
 
+def update_id_project_title(itemId, title):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE id_projects SET title = ? WHERE itemId = ?", (title, itemId))
+    conn.commit()
+    conn.close()
+
 def init_known_patterns_db():
     conn = get_db()
     cursor = conn.cursor()

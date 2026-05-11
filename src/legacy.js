@@ -470,7 +470,15 @@ function renderIdList(data) {
             <div class="viewer-swipe-delete" onclick="deleteIdGroup('${item.itemId}')">删除</div>
             <div class="viewer-item viewer-card" style="padding: 15px;">
                 <div class="idlist-sticky-header">
-                    <div class="viewer-row" style="margin-bottom: 10px; align-items: flex-start;"><div style="flex: 1;"><div class="viewer-text" style="font-size: 16px; color: #1890ff; white-space: normal; word-break: break-all;">${escapeHtml(item.title)}</div><div class="viewer-sub">项目ID: ${item.itemId}</div></div></div>
+                    <div class="viewer-row" style="margin-bottom: 10px; align-items: flex-start;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div class="viewer-text" style="font-size: 16px; color: #1890ff; white-space: normal; word-break: break-all; flex: 1;">${escapeHtml(item.title)}</div>
+                                <span style="cursor: pointer; color: #999; font-size: 14px;" onclick="editIdProjectTitle('${item.itemId}', '${escapeHtml(item.title).replace(/'/g, "\\'")}')">📝</span>
+                            </div>
+                            <div class="viewer-sub">项目ID: ${item.itemId}</div>
+                        </div>
+                    </div>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                         <button class="mini-btn" style="background: #e6f7ff; color: #1890ff;" onclick="copyPlainText(event, '${item.itemId}', '已复制项目ID')">复制项目ID</button>
                         <button class="mini-btn" style="background: #f6ffed; color: #52c41a;" onclick="copyProjectIds(this)">复制票价ID</button>
@@ -523,6 +531,57 @@ window.deleteIdGroup = async function(itemId) {
         const res = await fetch(`/api/idlist/${itemId}`, { method: "DELETE", headers: { "ngrok-skip-browser-warning": "true" } });
         if (res.ok) loadIdList();
     } catch (e) { alert("删除失败"); }
+}
+
+window.editIdProjectTitle = async function(itemId, oldTitle) {
+    // 兼容环境：如果 prompt 被禁用，尝试使用更通用的方式或提醒
+    let newTitle;
+    try {
+        newTitle = window.prompt("请输入新的演出名称:", oldTitle);
+    } catch (e) {
+        console.error("prompt error:", e);
+        // 如果是在 Ant Design 环境下，可以尝试调用全局 message
+        if (window.antd && window.antd.Modal) {
+            window.antd.Modal.confirm({
+                title: '修改演出名称',
+                content: React.createElement(window.antd.Input, {
+                    defaultValue: oldTitle,
+                    onChange: (e) => (window._temp_legacy_title = e.target.value)
+                }),
+                onOk: async () => {
+                    const val = window._temp_legacy_title || oldTitle;
+                    if (val && val !== oldTitle) {
+                        await performTitleUpdate(itemId, val);
+                    }
+                }
+            });
+            return;
+        }
+        alert("当前环境不支持快捷输入，请在 PC 端浏览器尝试。");
+        return;
+    }
+    
+    if (!newTitle || newTitle === oldTitle) return;
+    await performTitleUpdate(itemId, newTitle);
+}
+
+async function performTitleUpdate(itemId, newTitle) {
+    try {
+        const res = await fetch(`/api/idlist/${itemId}/title`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+            body: JSON.stringify({ title: newTitle })
+        });
+        const result = await res.json();
+        if (result.status === "success") {
+            if (window.showToast) window.showToast("更新成功");
+            if (window.loadIdList) window.loadIdList();
+        } else {
+            alert("更新失败: " + result.msg);
+        }
+    } catch (e) {
+        alert("网络错误，更新失败");
+    }
 }
 
 window.copyProjectIds = function(btn) {
