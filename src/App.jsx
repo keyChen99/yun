@@ -526,6 +526,7 @@ const VirtualNumbersTable = ({ standalone = false }) => {
 
     const columns = useMemo(() => [
         { title: '#', key: 'index', width: 40, align: 'center', render: (_, __, index) => (currentPage - 1) * pageSize + index + 1 },
+        { title: 'ID', dataIndex: 'id', key: 'id', width: 60, align: 'center', render: (id) => <span style={{ color: '#999', fontSize: '11px' }}>{id}</span> },
         { 
             title: '号码', 
             dataIndex: 'phone', 
