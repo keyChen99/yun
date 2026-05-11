@@ -570,25 +570,27 @@ def claim_virtual_number(machine_code):
     conn = get_db()
     cursor = conn.cursor()
     
-    # 1. 检查该机器码是否已经绑定了号码
-    cursor.execute("SELECT * FROM virtual_numbers WHERE machine_code = ?", (machine_code,))
+    # 彻底重写逻辑：不根据机器码查找，直接找使用次数最少且 ID 最新的号码
+    # 优先级：usage_count 升序 (0次优先) > id 降序 (最新优先)
+    cursor.execute("SELECT * FROM virtual_numbers ORDER BY usage_count ASC, id DESC LIMIT 1")
     row = cursor.fetchone()
-    if row:
-        conn.close()
-        return dict(row)
     
-    # 2. 找一个未绑定的号码（优先使用 usage_count 较小的，同等次数下优先使用最新的 ID）
-    cursor.execute("SELECT * FROM virtual_numbers WHERE machine_code IS NULL OR machine_code = '' ORDER BY usage_count ASC, id DESC LIMIT 1")
-    row = cursor.fetchone()
     if row:
-        record_id = row["id"]
-        cursor.execute("UPDATE virtual_numbers SET machine_code = ?, usage_count = usage_count + 1 WHERE id = ?", (machine_code, record_id))
+        target_id = row['id']
+        # 更新该号码的状态：增加使用次数，并记录最后使用的机器码
+        cursor.execute("""
+            UPDATE virtual_numbers 
+            SET usage_count = usage_count + 1, 
+                machine_code = ? 
+            WHERE id = ?
+        """, (machine_code, target_id))
         conn.commit()
-        # 重新读取完整数据
-        cursor.execute("SELECT * FROM virtual_numbers WHERE id = ?", (record_id,))
-        row = cursor.fetchone()
+        
+        # 重新获取更新后的数据返回
+        cursor.execute("SELECT * FROM virtual_numbers WHERE id = ?", (target_id,))
+        new_row = cursor.fetchone()
         conn.close()
-        return dict(row)
+        return dict(new_row)
     
     conn.close()
     return None
