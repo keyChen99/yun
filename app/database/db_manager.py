@@ -16,6 +16,34 @@ db_dir = os.path.dirname(DB_FILE)
 if db_dir and not os.path.exists(db_dir):
     os.makedirs(db_dir, exist_ok=True)
 
+# 数据库同步逻辑
+REPO_DB = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "stock.db")
+if os.environ.get("DB_PATH") and os.path.exists(REPO_DB):
+    should_copy = False
+    
+    # 情况 1: 目标路径没有数据库文件
+    if not os.path.exists(DB_FILE):
+        should_copy = True
+        print("线上数据库不存在，准备从项目目录拷贝初始数据库...")
+    
+    # 情况 2: 目标文件存在但非常小（可能是刚初始化的空库），且本地库明显更大
+    elif os.path.getsize(DB_FILE) < 50 * 1024: # 小于 50KB
+        should_copy = True
+        print("检测到线上数据库可能为空库，准备执行覆盖同步...")
+
+    # 情况 3: 强制同步开关
+    if os.environ.get("FORCE_SYNC_DB") == "true":
+        should_copy = True
+        print("检测到 FORCE_SYNC_DB=true，执行强制覆盖同步...")
+
+    if should_copy:
+        try:
+            # 先关闭所有连接（如果可能），然后拷贝
+            shutil.copy2(REPO_DB, DB_FILE)
+            print(f"成功将数据库从 {REPO_DB} 同步至 {DB_FILE} (大小: {os.path.getsize(DB_FILE)} bytes)")
+        except Exception as e:
+            print(f"数据库同步失败: {e}")
+
 def get_db():
     # 增加 timeout 参数（单位秒），防止数据库忙时直接报错，提高并发稳定性
     conn = sqlite3.connect(DB_FILE, timeout=30)
