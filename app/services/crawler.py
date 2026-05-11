@@ -50,6 +50,7 @@ async def fetch_damai_title(url: str) -> str:
             }
             resp = await client.get(m_url, headers=headers, follow_redirects=True)
             print(f"[Crawler] [Step 2] Response Status: {resp.status_code}, Final URL: {resp.url}")
+            print(f"[Crawler] [Step 2] Body Snippet (first 500 chars): {resp.text[:500]}")
             if resp.status_code == 200:
                 # 检查是否包含反爬关键词
                 if "punish" in str(resp.url) or "captcha" in resp.text or "验证码" in resp.text:
@@ -79,6 +80,7 @@ async def fetch_damai_title(url: str) -> str:
             }
             resp = await client.get(target_url, headers=headers, follow_redirects=True)
             print(f"[Crawler] [Step 3] Response Status: {resp.status_code}, Final URL: {resp.url}")
+            print(f"[Crawler] [Step 3] Body Snippet (first 500 chars): {resp.text[:500]}")
             
             if resp.status_code == 200:
                 # 检查是否包含反爬关键词
