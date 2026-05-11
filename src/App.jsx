@@ -78,6 +78,7 @@ const VirtualNumbersTable = ({ standalone = false }) => {
     const [inputText, setInputText] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [hasMobileFilter, setHasMobileFilter] = useState(null); // null: all, true: has mobile, false: no mobile
+    const [hasNotesFilter, setHasNotesFilter] = useState(null);
     const [usageCountFilter, setUsageCountFilter] = useState(null);
     const [cancellationCountFilter, setCancellationCountFilter] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
@@ -225,9 +226,9 @@ const VirtualNumbersTable = ({ standalone = false }) => {
         }
     }, []);
 
-    const loadData = useCallback(async (page, size, search, hasMobile, usageCount, cancellationCount) => {
+    const loadData = useCallback(async (page, size, search, hasMobile, usageCount, cancellationCount, hasNotes) => {
         const start = performance.now();
-        console.log(`[Performance] loadData 开始: page=${page}, size=${size}, search=${search}, hasMobile=${hasMobile}, usageCount=${usageCount}, cancellationCount=${cancellationCount}`);
+        console.log(`[Performance] loadData 开始: page=${page}, size=${size}, search=${search}, hasMobile=${hasMobile}, usageCount=${usageCount}, cancellationCount=${cancellationCount}, hasNotes=${hasNotes}`);
         
         if (isFetching.current) {
             console.log(`[Performance] loadData 跳过: 正在请求中...`);
@@ -243,6 +244,9 @@ const VirtualNumbersTable = ({ standalone = false }) => {
             if (search) queryParams.append("search", search);
             if (hasMobile !== null && hasMobile !== undefined) {
                 queryParams.append("has_mobile", String(hasMobile));
+            }
+            if (hasNotes !== null && hasNotes !== undefined) {
+                queryParams.append("has_notes", String(hasNotes));
             }
             if (usageCount !== null && usageCount !== undefined) {
                 queryParams.append("usage_count", String(usageCount));
@@ -272,7 +276,7 @@ const VirtualNumbersTable = ({ standalone = false }) => {
     }, []);
 
     useEffect(() => {
-        loadData(currentPage, pageSize, searchQuery, hasMobileFilter, usageCountFilter, cancellationCountFilter);
+        loadData(currentPage, pageSize, searchQuery, hasMobileFilter, usageCountFilter, cancellationCountFilter, hasNotesFilter);
         fetchUsedMobiles(); // 初始加载已用手机号
         fetchMobileLibrary(); // 初始加载手机号库
         fetchQuickTools(); // 初始加载快捷工具
@@ -280,9 +284,10 @@ const VirtualNumbersTable = ({ standalone = false }) => {
             window.refreshVirtualNumbers = () => {
                 setSearchQuery("");
                 setHasMobileFilter(null);
+                setHasNotesFilter(null);
                 setUsageCountFilter(null);
                 setCancellationCountFilter(null);
-                loadData(1, pageSize, "", null, null, null);
+                loadData(1, pageSize, "", null, null, null, null);
             };
         }
         if (typeof window.hideLoading === 'function') {
@@ -461,16 +466,16 @@ const VirtualNumbersTable = ({ standalone = false }) => {
 
     const handleSearch = useCallback((value) => {
         setSearchQuery(value);
-        loadData(1, pageSize, value, hasMobileFilter, usageCountFilter, cancellationCountFilter);
-    }, [pageSize, hasMobileFilter, usageCountFilter, cancellationCountFilter, loadData]);
+        loadData(1, pageSize, value, hasMobileFilter, usageCountFilter, cancellationCountFilter, hasNotesFilter);
+    }, [pageSize, hasMobileFilter, usageCountFilter, cancellationCountFilter, hasNotesFilter, loadData]);
 
     const handleTableChange = useCallback((pagination) => {
         console.log(`[Performance] handleTableChange: current=${pagination.current}, pageSize=${pagination.pageSize}`);
         // 立即更新分页状态，让 UI 实时响应，而不是等到请求结束
         setCurrentPage(pagination.current);
         setPageSize(pagination.pageSize);
-        loadData(pagination.current, pagination.pageSize, searchQuery, hasMobileFilter, usageCountFilter, cancellationCountFilter);
-    }, [searchQuery, hasMobileFilter, usageCountFilter, cancellationCountFilter, loadData]);
+        loadData(pagination.current, pagination.pageSize, searchQuery, hasMobileFilter, usageCountFilter, cancellationCountFilter, hasNotesFilter);
+    }, [searchQuery, hasMobileFilter, usageCountFilter, cancellationCountFilter, hasNotesFilter, loadData]);
 
     const handleBulkAdd = useCallback(async () => {
         if (!inputText.trim()) return;
@@ -486,7 +491,7 @@ const VirtualNumbersTable = ({ standalone = false }) => {
                 message.success(result.msg);
                 setInputText("");
                 setSearchQuery("");
-                loadData(1, pageSize, "", null, null, null);
+                loadData(1, pageSize, "", null, null, null, null);
             } else {
                 message.error(result.msg);
                 setLoading(false);
@@ -504,7 +509,7 @@ const VirtualNumbersTable = ({ standalone = false }) => {
             if (result.status === "success") {
                 message.success(result.msg);
                 setSearchQuery("");
-                loadData(1, pageSize, "", null, null, null);
+                loadData(1, pageSize, "", null, null, null, null);
             }
         } catch (e) {}
     }, [pageSize, loadData]);
@@ -516,8 +521,8 @@ const VirtualNumbersTable = ({ standalone = false }) => {
         });
         message.success("已删除");
         const targetPage = (data.length === 1 && currentPage > 1) ? currentPage - 1 : currentPage;
-        loadData(targetPage, pageSize, searchQuery, hasMobileFilter, usageCountFilter, cancellationCountFilter);
-    }, [data.length, currentPage, pageSize, searchQuery, hasMobileFilter, usageCountFilter, cancellationCountFilter, loadData]);
+        loadData(targetPage, pageSize, searchQuery, hasMobileFilter, usageCountFilter, cancellationCountFilter, hasNotesFilter);
+    }, [data.length, currentPage, pageSize, searchQuery, hasMobileFilter, usageCountFilter, cancellationCountFilter, hasNotesFilter, loadData]);
 
     const columns = useMemo(() => [
         { title: '#', key: 'index', width: 40, align: 'center', render: (_, __, index) => (currentPage - 1) * pageSize + index + 1 },
@@ -808,12 +813,27 @@ const VirtualNumbersTable = ({ standalone = false }) => {
                         onChange={(val) => {
                             const finalVal = val === undefined ? null : val;
                             setHasMobileFilter(finalVal);
-                            loadData(1, pageSize, searchQuery, finalVal, usageCountFilter, cancellationCountFilter);
+                            loadData(1, pageSize, searchQuery, finalVal, usageCountFilter, cancellationCountFilter, hasNotesFilter);
                         }}
                     >
                         <Select.Option value={null}>全部手机号</Select.Option>
                         <Select.Option value={true}>有手机号</Select.Option>
                         <Select.Option value={false}>无手机号</Select.Option>
+                    </Select>
+                    <Select 
+                        value={hasNotesFilter} 
+                        style={{ width: 110 }} 
+                        placeholder="备注筛选"
+                        allowClear
+                        onChange={(val) => {
+                            const finalVal = val === undefined ? null : val;
+                            setHasNotesFilter(finalVal);
+                            loadData(1, pageSize, searchQuery, hasMobileFilter, usageCountFilter, cancellationCountFilter, finalVal);
+                        }}
+                    >
+                        <Select.Option value={null}>全部备注</Select.Option>
+                        <Select.Option value={true}>有备注</Select.Option>
+                        <Select.Option value={false}>无备注</Select.Option>
                     </Select>
                     <Select 
                         value={usageCountFilter} 
@@ -823,7 +843,7 @@ const VirtualNumbersTable = ({ standalone = false }) => {
                         onChange={(val) => {
                             const finalVal = val === undefined ? null : val;
                             setUsageCountFilter(finalVal);
-                            loadData(1, pageSize, searchQuery, hasMobileFilter, finalVal, cancellationCountFilter);
+                            loadData(1, pageSize, searchQuery, hasMobileFilter, finalVal, cancellationCountFilter, hasNotesFilter);
                         }}
                     >
                         <Select.Option value={null}>全部次数</Select.Option>
@@ -840,7 +860,7 @@ const VirtualNumbersTable = ({ standalone = false }) => {
                         onChange={(val) => {
                             const finalVal = val === undefined ? null : val;
                             setCancellationCountFilter(finalVal);
-                            loadData(1, pageSize, searchQuery, hasMobileFilter, usageCountFilter, finalVal);
+                            loadData(1, pageSize, searchQuery, hasMobileFilter, usageCountFilter, finalVal, hasNotesFilter);
                         }}
                     >
                         <Select.Option value={null}>全部注销</Select.Option>
@@ -852,9 +872,10 @@ const VirtualNumbersTable = ({ standalone = false }) => {
                     <Button type="primary" onClick={() => {
                         setSearchQuery("");
                         setHasMobileFilter(null);
+                        setHasNotesFilter(null);
                         setUsageCountFilter(null);
                         setCancellationCountFilter(null);
-                        loadData(1, pageSize, "", null, null, null);
+                        loadData(1, pageSize, "", null, null, null, null);
                     }}>刷新全部</Button>
                 </Space>
             </div>

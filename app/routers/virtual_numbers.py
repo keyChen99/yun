@@ -7,9 +7,9 @@ from app.database import db_manager as db
 router = APIRouter()
 
 @router.get("/api/virtual_numbers")
-async def get_virtual_numbers(search: str = None, page: int = 1, page_size: int = 20, has_mobile: bool = None, usage_count: int = None, cancellation_count: int = None):
+async def get_virtual_numbers(search: str = None, page: int = 1, page_size: int = 20, has_mobile: bool = None, usage_count: int = None, cancellation_count: int = None, has_notes: bool = None):
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, db.get_virtual_numbers_paginated, search, page, page_size, has_mobile, usage_count, cancellation_count)
+    return await loop.run_in_executor(None, db.get_virtual_numbers_paginated, search, page, page_size, has_mobile, usage_count, cancellation_count, has_notes)
 
 @router.post("/api/virtual_numbers/bulk")
 async def add_virtual_numbers_bulk(request: Request):

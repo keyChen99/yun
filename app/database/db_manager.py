@@ -609,7 +609,7 @@ def increment_cancellation_count(record_id):
     conn.commit()
     conn.close()
 
-def get_virtual_numbers_paginated(search=None, page=1, page_size=20, has_mobile=None, usage_count=None, cancellation_count=None):
+def get_virtual_numbers_paginated(search=None, page=1, page_size=20, has_mobile=None, usage_count=None, cancellation_count=None, has_notes=None):
     init_virtual_numbers_db()
     conn = get_db()
     cursor = conn.cursor()
@@ -625,6 +625,11 @@ def get_virtual_numbers_paginated(search=None, page=1, page_size=20, has_mobile=
         query += " AND (mobile IS NOT NULL AND mobile != '')"
     elif has_mobile is False:
         query += " AND (mobile IS NULL OR mobile = '')"
+
+    if has_notes is True:
+        query += " AND (notes IS NOT NULL AND notes != '')"
+    elif has_notes is False:
+        query += " AND (notes IS NULL OR notes = '')"
 
     if usage_count is not None:
         query += " AND usage_count = ?"
