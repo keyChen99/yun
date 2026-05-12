@@ -67,7 +67,9 @@ async def receive_data(request: Request):
             (concert_data.get("data", {}) if isinstance(concert_data.get("data"), dict) else {}).get("product_name") or
             find_key_recursive(concert_data, "product_name") or
             find_key_recursive(concert_data, "itemName") or
-            find_key_recursive(concert_data, "title")
+            find_key_recursive(concert_data, "title") or
+            find_key_recursive(concert_data, "projectName") or
+            find_key_recursive(concert_data, "showName")
         )
         
         # 如果还是没有，尝试从 URL 中解析
@@ -103,7 +105,10 @@ async def receive_data(request: Request):
 
         # 最后的兜底检查
         if not product_name:
-            print(f"无法识别名称。接口: {url_path}, 键值: {list(concert_data.keys())}")
+            # 记录详细日志，看看结构到底长什么样
+            import logging
+            logging.error(f"无法识别名称。接口: {url_path}, 数据结构摘要: {str(concert_data)[:500]}")
+            
             # 如果有库存但没名字，给个默认名，防止完全无法保存
             if calendar_map:
                 product_name = f"未知演出_{datetime.now().strftime('%H%M%S')}"
