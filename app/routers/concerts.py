@@ -75,12 +75,16 @@ async def receive_data(request: Request):
         # 如果还是没有，尝试从 URL 中解析
         if not product_name and "request" in send_data:
             url = send_data["request"].get("url", "")
-            # 尝试从 URL 参数中寻找可能的名字，虽然通常只有 ID
+            # 尝试从 URL 参数中寻找可能的名字或 ID
             import urllib.parse
             parsed_url = urllib.parse.urlparse(url)
             params = urllib.parse.parse_qs(parsed_url.query)
             if "itemName" in params:
                 product_name = params["itemName"][0]
+            elif "itemId" in params:
+                product_name = f"演出ID_{params['itemId'][0]}"
+            elif "id" in params:
+                product_name = f"演出ID_{params['id'][0]}"
 
         # 2. 尝试获取库存数据
         calendar_map = (
@@ -105,19 +109,20 @@ async def receive_data(request: Request):
 
         # 最后的兜底检查
         if not product_name:
-            # 记录详细日志，看看结构到底长什么样
-            import logging
-            logging.error(f"无法识别名称。接口: {url_path}, 数据结构摘要: {str(concert_data)[:500]}")
-            
             # 如果有库存但没名字，给个默认名，防止完全无法保存
             if calendar_map:
                 product_name = f"未知演出_{datetime.now().strftime('%H%M%S')}"
             else:
-                return {"status": "error", "msg": "缺少演出名称"}
+                # 记录详细日志，看看结构到底长什么样
+                import logging
+                logging.error(f"无法识别名称且无库存。接口: {url_path}, 数据结构摘要: {str(concert_data)[:500]}")
+                return {"status": "error", "msg": "缺少演出名称且无库存"}
 
         if calendar_map is None:
-            print(f"无法识别库存。接口: {url_path}, 键值: {list(concert_data.keys())}")
-            return {"status": "error", "msg": "缺少库存数据"}
+            # 如果没抓到库存，但是已经识别出了名称，可能这个报文只是个状态报文，或者是名称报文
+            # 为了防止报错，我们记录一下日志但返回 success
+            print(f"收到状态报文(无库存数据)。接口: {url_path}, 演出: {product_name}")
+            return {"status": "ignored", "msg": "该报文不含库存数据"}
 
         all_dates = sorted(list(calendar_map.keys()))
         
