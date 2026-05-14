@@ -793,6 +793,23 @@ def update_virtual_number_sms(item_id, sms_code):
     conn.commit()
     conn.close()
 
+def repair_virtual_numbers_links(old_ip, new_ip):
+    """
+    将 virtual_numbers 表中 link 字段包含 old_ip 的部分替换为 new_ip
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+    # 使用 SQL 的 REPLACE 函数进行替换
+    cursor.execute("""
+        UPDATE virtual_numbers 
+        SET link = REPLACE(link, ?, ?) 
+        WHERE link LIKE ?
+    """, (old_ip, new_ip, f"%{old_ip}%"))
+    count = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return count
+
 def clear_all_virtual_numbers():
     conn = get_db()
     cursor = conn.cursor()

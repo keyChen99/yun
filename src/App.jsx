@@ -85,6 +85,8 @@ const VirtualNumbersTable = ({ standalone = false }) => {
     const [pageSize, setPageSize] = useState(standalone ? 20 : 5);
     const [fetchingSmsIds, setFetchingSmsIds] = useState(new Set());
     const [copiedStatus, setCopiedStatus] = useState({}); // { [id]: { phone: bool, link: bool } }
+    const [repairOldIp, setRepairOldIp] = useState("2.59.151.182");
+    const [repairNewIp, setRepairNewIp] = useState("167.148.41.69");
     const fetchTimers = useRef({});
     const isFetching = useRef(false);
 
@@ -514,6 +516,29 @@ const VirtualNumbersTable = ({ standalone = false }) => {
         } catch (e) {}
     }, [pageSize, loadData]);
 
+    const handleRepairLinks = useCallback(async () => {
+        if (!repairOldIp.trim() || !repairNewIp.trim()) {
+            message.warning("请输入旧 IP 和新 IP");
+            return;
+        }
+        try {
+            const res = await fetch("/api/virtual_numbers/repair_links", { 
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ old_ip: repairOldIp, new_ip: repairNewIp })
+            });
+            const result = await res.json();
+            if (result.status === "success") {
+                message.success(result.msg);
+                loadData(currentPage, pageSize, searchQuery, hasMobileFilter, usageCountFilter, cancellationCountFilter, hasNotesFilter);
+            } else {
+                message.error(result.msg);
+            }
+        } catch (e) {
+            message.error("修复失败");
+        }
+    }, [repairOldIp, repairNewIp, currentPage, pageSize, searchQuery, hasMobileFilter, usageCountFilter, cancellationCountFilter, hasNotesFilter, loadData]);
+
     const handleDelete = useCallback(async (id) => {
         await fetch(`/api/virtual_numbers/${id}`, { 
             method: "DELETE",
@@ -884,18 +909,35 @@ const VirtualNumbersTable = ({ standalone = false }) => {
             <div style={{ marginBottom: 15 }}>
                 <Collapse ghost size="small">
                     <Collapse.Panel header={<span style={{ fontSize: '13px', color: '#666' }}><PlusOutlined /> 批量添加虚拟号</span>} key="1">
-                        <Input.TextArea 
-                            placeholder="格式: 号码----链接" 
-                            rows={standalone ? 4 : 2} 
-                            value={inputText}
-                            onChange={e => setInputText(e.target.value)}
-                            style={{ marginBottom: 10 }}
-                        />
-                        <Space>
-                            <Button type="primary" size="small" onClick={handleBulkAdd}>开始保存</Button>
-                            <Popconfirm title="确定要清空全部虚拟号吗？" onConfirm={handleClear}>
-                                <Button size="small" danger>清空全部</Button>
-                            </Popconfirm>
+                        <Space direction="vertical" style={{ width: '100%' }}>
+                            <Input.TextArea 
+                                placeholder="格式: 号码----链接" 
+                                rows={standalone ? 4 : 2} 
+                                value={inputText}
+                                onChange={e => setInputText(e.target.value)}
+                            />
+                            <Space wrap>
+                                <Button type="primary" size="small" onClick={handleBulkAdd}>开始保存</Button>
+                                <Divider type="vertical" />
+                                <Input 
+                                    size="small" 
+                                    placeholder="旧 IP (如: 2.59.151.182)" 
+                                    style={{ width: 160 }} 
+                                    value={repairOldIp}
+                                    onChange={e => setRepairOldIp(e.target.value)}
+                                />
+                                <Input 
+                                    size="small" 
+                                    placeholder="新 IP (如: 167.148.41.69)" 
+                                    style={{ width: 160 }} 
+                                    value={repairNewIp}
+                                    onChange={e => setRepairNewIp(e.target.value)}
+                                />
+                                <Button size="small" type="primary" ghost onClick={handleRepairLinks}>批量修复链接</Button>
+                                <Popconfirm title="确定要清空全部虚拟号吗？" onConfirm={handleClear}>
+                                    <Button size="small" danger>清空全部</Button>
+                                </Popconfirm>
+                            </Space>
                         </Space>
                     </Collapse.Panel>
                 </Collapse>

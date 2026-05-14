@@ -198,3 +198,16 @@ async def proxy_fetch_sms(url: str):
 async def clear_all_virtual_numbers():
     db.clear_all_virtual_numbers()
     return {"status": "success", "msg": "所有虚拟号数据已清空"}
+
+@router.post("/api/virtual_numbers/repair_links")
+async def repair_virtual_numbers_links(request: Request):
+    payload = await request.json()
+    old_ip = payload.get("old_ip", "").strip()
+    new_ip = payload.get("new_ip", "").strip()
+    
+    if not old_ip or not new_ip:
+        return {"status": "error", "msg": "旧 IP 和新 IP 不能为空"}
+        
+    loop = asyncio.get_event_loop()
+    count = await loop.run_in_executor(None, db.repair_virtual_numbers_links, old_ip, new_ip)
+    return {"status": "success", "msg": f"成功修复 {count} 条链接数据", "count": count}
