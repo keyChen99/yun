@@ -416,6 +416,50 @@ def update_id_project_title(itemId, title):
     conn.commit()
     conn.close()
 
+def clear_expired_id_projects():
+    """
+    清理 ID 列表中的过期项：
+    1. 删除 id_tickets 中日期早于今天的票价
+    2. 删除没有任何票价的项目
+    """
+    init_idlist_db()
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # 获取当前日期字符串 YYYY-MM-DD
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    
+    # 1. 查找并删除过期的票价
+    # info 字段通常包含日期格式如 2024-05-14
+    cursor.execute("SELECT id, info FROM id_tickets")
+    tickets = cursor.fetchall()
+    
+    tickets_to_delete = []
+    for t in tickets:
+        # 使用正则提取日期
+        match = re.search(r"\d{4}-\d{2}-\d{2}", t["info"])
+        if match:
+            date_str = match.group(0)
+            if date_str < today_str:
+                tickets_to_delete.append(t["id"])
+    
+    deleted_tickets_count = 0
+    if tickets_to_delete:
+        placeholders = ', '.join(['?'] * len(tickets_to_delete))
+        cursor.execute(f"DELETE FROM id_tickets WHERE id IN ({placeholders})", tickets_to_delete)
+        deleted_tickets_count = cursor.rowcount
+        
+    # 2. 删除没有票价的项目
+    cursor.execute("""
+        DELETE FROM id_projects 
+        WHERE itemId NOT IN (SELECT DISTINCT itemId FROM id_tickets)
+    """)
+    deleted_projects_count = cursor.rowcount
+    
+    conn.commit()
+    conn.close()
+    return deleted_projects_count, deleted_tickets_count
+
 def init_known_patterns_db():
     conn = get_db()
     cursor = conn.cursor()
@@ -564,6 +608,18 @@ def delete_show_schedule(item_id):
     cursor.execute("DELETE FROM show_schedules WHERE id = ?", (item_id,))
     conn.commit()
     conn.close()
+
+def clear_expired_show_schedules():
+    """清除当前时间之前的演出日程"""
+    conn = get_db()
+    cursor = conn.cursor()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # 假设 sale_time 格式是 YYYY-MM-DD HH:MM:SS 或能够进行字符串比较的格式
+    cursor.execute("DELETE FROM show_schedules WHERE sale_time < ?", (now_str,))
+    count = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return count
 
 def claim_virtual_number(machine_code):
     init_virtual_numbers_db()

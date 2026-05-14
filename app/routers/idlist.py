@@ -90,3 +90,13 @@ async def update_id_title(item_id: str, request: Request):
         return {"status": "error", "msg": "标题不能为空"}
     db.update_id_project_title(item_id, title)
     return {"status": "success", "msg": "更新成功"}
+
+@router.post("/api/idlist/clear_expired")
+async def clear_expired_idlist():
+    projects_count, tickets_count = db.clear_expired_id_projects()
+    return {
+        "status": "success", 
+        "msg": f"已成功清除 {projects_count} 个过期项目和 {tickets_count} 条过期票价数据",
+        "projects_count": projects_count,
+        "tickets_count": tickets_count
+    }

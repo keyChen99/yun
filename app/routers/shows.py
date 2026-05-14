@@ -45,6 +45,11 @@ async def delete_show(item_id: int):
     db.delete_show_schedule(item_id)
     return {"status": "success", "msg": "删除成功"}
 
+@router.post("/api/shows/clear_expired")
+async def clear_expired_shows():
+    count = db.clear_expired_show_schedules()
+    return {"status": "success", "msg": f"已成功清除 {count} 条过期演出数据", "count": count}
+
 @router.post("/api/shows/parse_image")
 async def parse_image(request: Request):
     payload = await request.json()

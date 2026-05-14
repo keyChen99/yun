@@ -533,6 +533,23 @@ window.deleteIdGroup = async function(itemId) {
     } catch (e) { alert("删除失败"); }
 }
 
+window.clearExpiredIdList = async function() {
+    if (!confirm("确定要清除所有已结束的项目和票价吗？")) return;
+    try {
+        const res = await fetch("/api/idlist/clear_expired", { method: "POST", headers: { "ngrok-skip-browser-warning": "true" } });
+        const result = await res.json();
+        if (result.status === "success") {
+            if (window.showToast) window.showToast(result.msg);
+            else alert(result.msg);
+            window.loadIdList();
+        } else {
+            alert("清除失败: " + result.msg);
+        }
+    } catch (e) {
+        alert("网络错误，清除失败");
+    }
+}
+
 window.editIdProjectTitle = async function(itemId, oldTitle) {
     // 兼容环境：如果 prompt 被禁用，尝试使用更通用的方式或提醒
     let newTitle;

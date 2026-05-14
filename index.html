@@ -61,7 +61,10 @@
                 <button id="autoSearchBtn" class="primary-btn" style="margin-top: 0; width: 100px;" onclick="autoSearchId()">自动搜索</button>
             </div>
             <textarea id="idListInput" class="viewer-input" placeholder="或粘贴项目链接/详情页文本，自动提取ID"></textarea>
-            <button class="primary-btn" onclick="parseAndSaveIdList()">解析并保存ID</button>
+            <div style="display: flex; gap: 10px;">
+                <button class="primary-btn" style="flex: 1;" onclick="parseAndSaveIdList()">解析并保存ID</button>
+                <button class="danger-btn" style="width: 120px; margin-top: 15px;" onclick="clearExpiredIdList()">清除过期</button>
+            </div>
             <div style="margin-top: 15px;">
                 <input id="idListSearch" class="viewer-input" style="min-height: 45px;" placeholder="搜索标题/项目ID/票价ID..." oninput="filterIdList()">
             </div>

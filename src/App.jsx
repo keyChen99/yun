@@ -1997,6 +1997,23 @@ const ShowScheduleModule = () => {
         }
     };
 
+    const handleClearExpired = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch("/api/shows/clear_expired", { method: "POST" });
+            const result = await res.json();
+            if (result.status === "success") {
+                message.success(result.msg);
+                fetchData();
+                window.dispatchEvent(new CustomEvent('shows-updated'));
+            }
+        } catch (e) {
+            message.error("清除失败");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleParseImage = async (file) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -2079,11 +2096,16 @@ const ShowScheduleModule = () => {
     return (
         <div className="ticketing-container">
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => {
-                    setEditingId(null);
-                    setPendingShows([{ tempId: Date.now(), show_name: '', sale_time: null }]);
-                    setIsModalOpen(true);
-                }}>新增演出</Button>
+                <Space>
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => {
+                        setEditingId(null);
+                        setPendingShows([{ tempId: Date.now(), show_name: '', sale_time: null }]);
+                        setIsModalOpen(true);
+                    }}>新增演出</Button>
+                    <Popconfirm title="确定清除所有过期（当前时间之前）的演出吗？" onConfirm={handleClearExpired}>
+                        <Button danger icon={<DeleteOutlined />}>清除过期</Button>
+                    </Popconfirm>
+                </Space>
                 <Button icon={<DashboardOutlined />} onClick={fetchData}>刷新列表</Button>
             </div>
 
@@ -2324,14 +2346,18 @@ const Layout = ({ children }) => {
 };
 
 export default function App() {
+    const handleInventoryMount = useCallback(() => window.loadInventory && window.loadInventory(), []);
+    const handleViewersMount = useCallback(() => window.loadViewers && window.loadViewers(), []);
+    const handleIdListMount = useCallback(() => window.loadIdList && window.loadIdList(), []);
+
     return (
         <HashRouter>
             <Layout>
                 <Routes>
                     <Route path="/" element={<LegacyViewWrapper viewId="homeView" />} />
-                    <Route path="/inventory" element={<LegacyViewWrapper viewId="inventoryView" onMount={() => window.loadInventory && window.loadInventory()} />} />
-                    <Route path="/viewers" element={<LegacyViewWrapper viewId="viewersView" onMount={() => window.loadViewers && window.loadViewers()} />} />
-                    <Route path="/idlist" element={<LegacyViewWrapper viewId="idListView" onMount={() => window.loadIdList && window.loadIdList()} />} />
+                    <Route path="/inventory" element={<LegacyViewWrapper viewId="inventoryView" onMount={handleInventoryMount} />} />
+                    <Route path="/viewers" element={<LegacyViewWrapper viewId="viewersView" onMount={handleViewersMount} />} />
+                    <Route path="/idlist" element={<LegacyViewWrapper viewId="idListView" onMount={handleIdListMount} />} />
                     <Route path="/virtual_numbers" element={
                         <ViewWithTitle title="虚拟号表" viewName="virtual_numbers">
                             <VirtualNumbersTable standalone={true} />
