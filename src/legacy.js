@@ -23,7 +23,8 @@ window.showView = function(view, searchKeyword = "") {
         'shows': '/shows',
         'ticketing': '/ticketing',
         'chat_generator': '/chat_generator',
-        'wechat': '/wechat'
+        'wechat': '/wechat',
+        'wechat_logs': '/wechat/logs'
     };
 
     const path = routeMap[view] || '/';

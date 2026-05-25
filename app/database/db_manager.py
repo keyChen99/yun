@@ -4,6 +4,7 @@ import os
 import re
 import shutil
 from datetime import datetime
+from app.core.config import get_now_cst
 
 # 数据库文件路径处理
 # 优先从环境变量读取（用于 Railway 等云平台持久化挂载），否则默认保存在项目根目录
@@ -88,11 +89,11 @@ def save_concert(concert_dict):
     cursor = conn.cursor()
     # 确保 dict 中有 id，如果没有则生成
     if "id" not in concert_dict:
-        concert_dict["id"] = int(datetime.now().timestamp() * 1000)
+        concert_dict["id"] = int(get_now_cst().timestamp() * 1000)
         
     cursor.execute(
         "INSERT INTO concerts (name, data, updated_at) VALUES (?, ?, ?)",
-        (concert_dict["name"], json.dumps(concert_dict, ensure_ascii=False), datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        (concert_dict["name"], json.dumps(concert_dict, ensure_ascii=False), get_now_cst().strftime("%Y-%m-%d %H:%M:%S"))
     )
     # 获取刚刚插入的 ID 并更新到 JSON 中（如果需要同步数据库 ID）
     last_id = cursor.lastrowid
@@ -136,7 +137,7 @@ def save_ticket_sys(show_name, viewers, quantity, price, notes, show_date='', st
     init_ticketing_db()
     conn = get_db()
     cursor = conn.cursor()
-    added_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    added_time = get_now_cst().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute(
         "INSERT INTO tickets_sys (show_name, show_date, viewers, quantity, price, notes, status, added_time, config_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (show_name, show_date, viewers, quantity, price, notes, status, added_time, config_code)
@@ -149,7 +150,7 @@ def save_tickets_bulk(items):
     init_ticketing_db()
     conn = get_db()
     cursor = conn.cursor()
-    added_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    added_time = get_now_cst().strftime("%Y-%m-%d %H:%M:%S")
     
     # 构造插入数据
     data = []
@@ -274,7 +275,7 @@ def delete_concert(db_id):
 # 2. 观影人操作
 def save_viewer_group(group_key, members_list, desc, added_time=None):
     if not added_time:
-        added_time = datetime.now().strftime("%m-%d %H:%M:%S")
+        added_time = get_now_cst().strftime("%m-%d %H:%M:%S")
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute(
@@ -312,7 +313,7 @@ def save_viewers_batch(viewer_list):
         else:
             cursor.execute(
                 "INSERT INTO viewers (group_key, members, desc, added_time) VALUES (?, ?, ?, ?)",
-                (item["group_key"], json.dumps(item["members"], ensure_ascii=False), item["desc"], item.get("added_time") or datetime.now().strftime("%m-%d %H:%M:%S"))
+                (item["group_key"], json.dumps(item["members"], ensure_ascii=False), item["desc"], item.get("added_time") or get_now_cst().strftime("%m-%d %H:%M:%S"))
             )
     conn.commit()
     conn.close()
@@ -358,7 +359,7 @@ def init_idlist_db():
 def save_id_project(itemId, title, url, tickets, added_time=None):
     init_idlist_db()
     if not added_time:
-        added_time = datetime.now().strftime("%m-%d %H:%M:%S")
+        added_time = get_now_cst().strftime("%m-%d %H:%M:%S")
     conn = get_db()
     cursor = conn.cursor()
     
@@ -427,7 +428,7 @@ def clear_expired_id_projects():
     cursor = conn.cursor()
     
     # 获取当前日期字符串 YYYY-MM-DD
-    today_str = datetime.now().strftime("%Y-%m-%d")
+    today_str = get_now_cst().strftime("%Y-%m-%d")
     
     # 1. 查找并删除过期的票价
     # info 字段通常包含日期格式如 2024-05-14
@@ -565,7 +566,7 @@ def save_wechat_bulk(wechat_ids, inputter):
     init_wechat_db()
     conn = get_db()
     cursor = conn.cursor()
-    added_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    added_time = get_now_cst().strftime("%Y-%m-%d %H:%M:%S")
     
     valid_count = 0
     duplicate_count = 0
@@ -652,7 +653,7 @@ def get_wechat_stats_today():
     cursor = conn.cursor()
     
     # 获取今日日期起始和结束
-    now = datetime.now()
+    now = get_now_cst()
     start_of_today = now.strftime("%Y-%m-%d 00:00:00")
     end_of_today = now.strftime("%Y-%m-%d 23:59:59")
     
@@ -663,6 +664,44 @@ def get_wechat_stats_today():
         GROUP BY inputter
     """
     cursor.execute(query, (start_of_today, end_of_today))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def init_visit_logs_db():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS wechat_visit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ip TEXT,
+            user_agent TEXT,
+            role TEXT,
+            inputter TEXT,
+            visit_time TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def record_wechat_visit(ip, user_agent, role, inputter):
+    init_visit_logs_db()
+    conn = get_db()
+    cursor = conn.cursor()
+    visit_time = get_now_cst().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute(
+        "INSERT INTO wechat_visit_logs (ip, user_agent, role, inputter, visit_time) VALUES (?, ?, ?, ?, ?)",
+        (ip, user_agent, role, inputter, visit_time)
+    )
+    conn.commit()
+    conn.close()
+
+def get_visit_logs():
+    """获取所有访问日志，按时间倒序"""
+    init_visit_logs_db()
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM wechat_visit_logs ORDER BY id DESC LIMIT 500")
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]
@@ -695,7 +734,7 @@ def save_show_schedule(show_name, sale_time):
     init_show_schedules_db()
     conn = get_db()
     cursor = conn.cursor()
-    added_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    added_time = get_now_cst().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute(
         "INSERT INTO show_schedules (show_name, sale_time, added_time) VALUES (?, ?, ?)",
         (show_name, sale_time, added_time)
@@ -707,7 +746,7 @@ def save_shows_bulk(items):
     init_show_schedules_db()
     conn = get_db()
     cursor = conn.cursor()
-    added_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    added_time = get_now_cst().strftime("%Y-%m-%d %H:%M:%S")
     data = [(item["show_name"], item["sale_time"], added_time) for item in items]
     cursor.executemany(
         "INSERT INTO show_schedules (show_name, sale_time, added_time) VALUES (?, ?, ?)",
@@ -738,7 +777,7 @@ def clear_expired_show_schedules():
     """清除当前时间之前的演出日程"""
     conn = get_db()
     cursor = conn.cursor()
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now_str = get_now_cst().strftime("%Y-%m-%d %H:%M:%S")
     # 假设 sale_time 格式是 YYYY-MM-DD HH:MM:SS 或能够进行字符串比较的格式
     cursor.execute("DELETE FROM show_schedules WHERE sale_time < ?", (now_str,))
     count = cursor.rowcount
@@ -848,7 +887,7 @@ def save_virtual_numbers_bulk(items):
     init_virtual_numbers_db()
     conn = get_db()
     cursor = conn.cursor()
-    added_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    added_time = get_now_cst().strftime("%Y-%m-%d %H:%M:%S")
     data = []
     for item in items:
         data.append((item["phone"], item["link"], item.get("usage_count", 0), item.get("notes", ""), added_time))

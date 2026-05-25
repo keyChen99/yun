@@ -1,6 +1,7 @@
 import json
 import re
 from datetime import datetime
+from app.core.config import get_now_cst
 from fastapi import APIRouter, Request
 from app.database import db_manager as db
 from app.core.sse import notify_clients
@@ -111,7 +112,7 @@ async def receive_data(request: Request):
         if not product_name:
             # 如果有库存但没名字，给个默认名，防止完全无法保存
             if calendar_map:
-                product_name = f"未知演出_{datetime.now().strftime('%H%M%S')}"
+                product_name = f"未知演出_{get_now_cst().strftime('%H%M%S')}"
             else:
                 # 记录详细日志，看看结构到底长什么样
                 import logging
@@ -130,7 +131,7 @@ async def receive_data(request: Request):
             "name": product_name,
             "dates": all_dates,
             "stock_map": calendar_map,
-            "fetch_time": datetime.now().strftime("%m-%d %H:%M:%S")
+            "fetch_time": get_now_cst().strftime("%m-%d %H:%M:%S")
         }
         
         print(f"成功解析并保存: {product_name} ({len(all_dates)}个日期)")

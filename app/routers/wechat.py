@@ -50,6 +50,31 @@ async def get_today_stats():
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, db.get_wechat_stats_today)
 
+@router.post("/api/wechat/visit")
+async def log_visit(request: Request):
+    payload = await request.json()
+    role = payload.get("role", "guest")
+    inputter = payload.get("inputter", "")
+    
+    # 获取客户端 IP
+    client_ip = request.client.host
+    user_agent = request.headers.get("user-agent", "")
+    
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, db.record_wechat_visit, client_ip, user_agent, role, inputter)
+    return {"status": "success"}
+
+@router.get("/api/wechat/logs")
+async def get_logs(request: Request):
+    # 强制校验 token 必须是超级管理员
+    auth_token = request.headers.get("Authorization")
+    from app.core.config import AUTH_PASSWORD
+    if auth_token != AUTH_PASSWORD:
+        return {"status": "error", "msg": "无权查看日志"}
+        
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, db.get_visit_logs)
+
 @router.delete("/api/wechat/{item_id}")
 async def delete_wechat_item(item_id: int):
     db.delete_wechat(item_id)

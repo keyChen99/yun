@@ -29,6 +29,7 @@
                 <button class="entry-btn" style="background: #13c2c2; color: white; display: none;" onclick="showView('shows')">配置演出</button>
                 <button class="entry-btn" style="background: #722ed1; color: white; display: none;" onclick="showView('ticketing')">票务系统</button>
                 <button class="entry-btn" style="background: #faad14; color: white; display: none;" onclick="showView('chat_generator')">聊天生成</button>
+                <button id="logsBtn" class="entry-btn" style="background: #001529; color: white; display: none;" onclick="showView('wechat_logs')">访问日志</button>
             </div>
             <button id="loginBtn" class="entry-btn" style="background: #8c8c8c; color: white;" onclick="promptLogin()">管理登录</button>
             <button id="logoutBtn" class="entry-btn" style="background: #ff4d4f; color: white; display: none;" onclick="logout()">退出登录</button>
@@ -112,6 +113,7 @@
             
             const adminFunctions = document.getElementById('adminFunctions');
             const wechatBtn = document.getElementById('wechatBtn');
+            const logsBtn = document.getElementById('logsBtn');
             const loginBtn = document.getElementById('loginBtn');
             const logoutBtn = document.getElementById('logoutBtn');
             
@@ -123,6 +125,11 @@
                 if (wechatBtn) {
                     const canSeeWechat = role === 'admin' || role === 'wechat_only' || permissions.includes('/api/wechat');
                     wechatBtn.style.display = canSeeWechat ? 'block' : 'none';
+                }
+
+                // 处理访问日志按钮显示逻辑
+                if (logsBtn) {
+                    logsBtn.style.display = (role === 'admin') ? 'block' : 'none';
                 }
 
                 if (role === 'admin') {

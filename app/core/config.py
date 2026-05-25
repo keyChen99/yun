@@ -1,5 +1,11 @@
 import os
 import re
+from datetime import datetime, timedelta, timezone
+
+def get_now_cst() -> datetime:
+    """获取中国标准时间 (UTC+8)"""
+    tz_cst = timezone(timedelta(hours=8))
+    return datetime.now(tz_cst)
 
 # 授权密码配置
 AUTH_PASSWORD = "248248"  # 超级管理员：访问全部内容

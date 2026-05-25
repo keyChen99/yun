@@ -3,7 +3,7 @@ import base64
 import httpx
 import re
 from typing import Dict, Any, Optional, List
-from app.core.config import AI_API_KEY, AI_BASE_URL
+from app.core.config import AI_API_KEY, AI_BASE_URL, get_now_cst
 
 from datetime import datetime
 
@@ -19,7 +19,7 @@ def format_sale_time(raw_time_str: str) -> str:
     """
     根据 AI 识别的原始时间字符串，智能拼凑完整的 YYYY-MM-DD HH:mm:ss
     """
-    now = datetime.now()
+    now = get_now_cst()
     current_year = now.year
     
     # 清洗字符串，去掉空格等

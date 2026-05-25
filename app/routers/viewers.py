@@ -1,4 +1,5 @@
 from datetime import datetime
+from app.core.config import get_now_cst
 from fastapi import APIRouter, Request
 from app.database import db_manager as db
 from app.core.sse import notify_clients
@@ -36,7 +37,7 @@ async def parse_and_save_viewers(request: Request):
     existing_by_key = {item["group_key"]: item for item in existing}
 
     added = 0
-    now_str = datetime.now().strftime("%m-%d %H:%M:%S")
+    now_str = get_now_cst().strftime("%m-%d %H:%M:%S")
     to_save = []
     
     for item in extracted:
