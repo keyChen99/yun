@@ -555,9 +555,15 @@ def init_wechat_db():
             is_processed INTEGER DEFAULT 0,
             tag TEXT,
             inputter TEXT,
-            added_time TEXT
+            added_time TEXT,
+            remarks TEXT
         )
     ''')
+    # 检查字段是否存在（针对旧数据库迁移）
+    cursor.execute("PRAGMA table_info(wechat_list)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if 'remarks' not in columns:
+        cursor.execute("ALTER TABLE wechat_list ADD COLUMN remarks TEXT")
     conn.commit()
     conn.close()
 
@@ -616,7 +622,7 @@ def get_all_wechat(search=None, status=None, tag=None):
     conn.close()
     return [dict(row) for row in rows]
 
-def update_wechat(wid, is_processed=None, tag=None):
+def update_wechat(wid, is_processed=None, tag=None, remarks=None):
     conn = get_db()
     cursor = conn.cursor()
     updates = []
@@ -629,6 +635,10 @@ def update_wechat(wid, is_processed=None, tag=None):
     if tag is not None:
         updates.append("tag = ?")
         params.append(tag)
+        
+    if remarks is not None:
+        updates.append("remarks = ?")
+        params.append(remarks)
         
     if not updates:
         return

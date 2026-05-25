@@ -92,6 +92,28 @@
         </div>
     </div>
 
+    <div id="loginModal" class="modal">
+        <div class="modal-content" style="max-width: 320px; padding: 25px;">
+            <h3 style="margin-top: 0; margin-bottom: 20px; text-align: center;">管理登录</h3>
+            <input type="password" id="loginPassword" class="viewer-input" style="min-height: 40px; margin-bottom: 20px;" placeholder="请输入管理密码" onkeydown="if(event.key==='Enter') doLogin()">
+            <div style="display: flex; gap: 10px;">
+                <button class="primary-btn" style="margin: 0; flex: 1;" onclick="doLogin()">登录</button>
+                <button class="danger-btn" style="margin: 0; flex: 1; background: #f5f5f5; color: #666; border: 1px solid #ddd;" onclick="closeLoginModal()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="inputModal" class="modal">
+        <div class="modal-content" style="max-width: 400px; padding: 25px;">
+            <h3 id="inputModalTitle" style="margin-top: 0; margin-bottom: 20px;">请输入</h3>
+            <input type="text" id="inputModalValue" class="viewer-input" style="min-height: 40px; margin-bottom: 20px;">
+            <div style="display: flex; gap: 10px;">
+                <button class="primary-btn" style="margin: 0; flex: 1;" id="inputModalOk">确定</button>
+                <button class="danger-btn" style="margin: 0; flex: 1; background: #f5f5f5; color: #666; border: 1px solid #ddd;" onclick="closeInputModal()">取消</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast" class="toast"></div>
 
     <script type="module" src="/src/main.jsx"></script>
@@ -105,6 +127,17 @@
             }
             updateUIByAuth();
         };
+
+        window.showToast = function(message) {
+            const toast = document.getElementById("toast");
+            if (!toast) return;
+            toast.innerText = message;
+            toast.classList.add("show");
+            setTimeout(() => toast.classList.remove("show"), 1500);
+        };
+
+        // 视图切换逻辑
+        window.currentView = 'home';
 
         function updateUIByAuth() {
             const token = localStorage.getItem('auth_token');
@@ -161,8 +194,45 @@
             }
         }
 
-        async function promptLogin() {
-            const password = prompt("请输入管理密码：");
+        function promptLogin() {
+            const modal = document.getElementById("loginModal");
+            const input = document.getElementById("loginPassword");
+            input.value = "";
+            modal.style.display = "flex";
+            setTimeout(() => input.focus(), 100);
+        }
+
+        function closeLoginModal() {
+            document.getElementById("loginModal").style.display = "none";
+        }
+
+        window.showInputModal = function(title, defaultValue, callback) {
+            const modal = document.getElementById("inputModal");
+            const titleEl = document.getElementById("inputModalTitle");
+            const inputEl = document.getElementById("inputModalValue");
+            const okBtn = document.getElementById("inputModalOk");
+            
+            titleEl.innerText = title;
+            inputEl.value = defaultValue || "";
+            modal.style.display = "flex";
+            
+            const handleOk = () => {
+                const val = inputEl.value;
+                modal.style.display = "none";
+                okBtn.removeEventListener("click", handleOk);
+                callback(val);
+            };
+            
+            okBtn.addEventListener("click", handleOk);
+            setTimeout(() => inputEl.focus(), 100);
+        };
+
+        window.closeInputModal = function() {
+            document.getElementById("inputModal").style.display = "none";
+        };
+
+        async function doLogin() {
+            const password = document.getElementById("loginPassword").value;
             if (!password) return;
             
             try {
@@ -176,13 +246,14 @@
                     localStorage.setItem('auth_token', password);
                     localStorage.setItem('auth_role', result.role);
                     localStorage.setItem('auth_permissions', JSON.stringify(result.permissions));
-                    alert("登录成功");
-                    location.reload();
+                    closeLoginModal();
+                    window.showToast("登录成功");
+                    setTimeout(() => location.reload(), 500);
                 } else {
-                    alert("密码错误");
+                    window.showToast("密码错误");
                 }
             } catch (e) {
-                alert("登录失败");
+                window.showToast("登录失败");
             }
         }
 
@@ -190,10 +261,10 @@
             localStorage.removeItem('auth_token');
             localStorage.removeItem('auth_role');
             localStorage.removeItem('auth_permissions');
-            alert("已退出登录");
+            window.showToast("已退出登录");
             // 确保退出后回到首页 hash，避免停留在已无权访问的路径
             window.location.hash = '#/';
-            location.reload();
+            setTimeout(() => location.reload(), 500);
         }
 
         // 兜底隐藏

@@ -209,25 +209,28 @@ body.desktop-mode {
 /* 移动端弹窗样式 */
 @media (max-width: 767px) {
     .modal {
-        align-items: flex-end; /* 从底部弹出 */
+        align-items: center; /* 改为居中显示，不再从底部弹出 */
+        justify-content: center;
+        padding: 20px;
     }
     .modal-content {
-        border-radius: 20px 20px 0 0;
+        border-radius: 12px; /* 居中弹窗使用全圆角 */
         width: 100%;
+        max-width: 320px; /* 限制移动端宽度 */
         padding: 20px;
-        animation: slideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        animation: fadeIn 0.3s ease;
     }
     .close-btn {
-        display: none; /* 移动端隐藏关闭按钮 */
+        display: flex; /* 移动端也显示关闭按钮 */
     }
-    @keyframes slideUp {
-        from { transform: translateY(100%); }
-        to { transform: translateY(0); }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
     }
     /* 适配 iOS 安全区域 */
     @supports (padding-bottom: env(safe-area-inset-bottom)) {
         .modal-content {
-            padding-bottom: calc(25px + env(safe-area-inset-bottom));
+            padding-bottom: 20px;
         }
     }
     .stock-item {

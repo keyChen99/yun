@@ -10,8 +10,10 @@ const CountdownFloating = () => {
     const [timeLefts, setTimeLefts] = useState({});
     const [isExpanded, setIsExpanded] = useState(false);
     const timerRef = useRef(null);
+    const role = localStorage.getItem('auth_role');
 
     const updateShows = useCallback(async () => {
+        if (!role || role === 'wechat_only') return; // 未登录或微信专员不加载演出数据
         try {
             const res = await fetch("/api/shows");
             const allShows = await res.json();
@@ -26,7 +28,7 @@ const CountdownFloating = () => {
         } catch (e) {
             console.error("Fetch shows failed", e);
         }
-    }, []);
+    }, [role]);
 
     useEffect(() => {
         updateShows();
@@ -67,7 +69,7 @@ const CountdownFloating = () => {
         return () => clearInterval(timerRef.current);
     }, [allFutureShows]);
 
-    if (allFutureShows.length === 0) return null;
+    if (!role || role === 'wechat_only' || allFutureShows.length === 0) return null;
 
     const mainShow = allFutureShows[0];
 

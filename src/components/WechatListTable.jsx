@@ -130,7 +130,27 @@ const WechatListTable = () => {
 
     const columns = [
         { title: '序号', key: 'index', render: (_, __, index) => index + 1, width: 70 },
-        { title: '微信', dataIndex: 'wechat_id', key: 'wechat_id' },
+        { 
+            title: '微信', 
+            dataIndex: 'wechat_id', 
+            key: 'wechat_id',
+            render: (text, record) => (
+                <div 
+                    style={{ cursor: 'pointer', color: '#1890ff', fontWeight: '500' }}
+                    onClick={(e) => {
+                        if (window.copyPlainText) {
+                            window.copyPlainText(e, text, '微信ID已复制');
+                            // 自动转换处理状态为已处理
+                            if (record.is_processed === 0) {
+                                handleUpdate(record.id, { is_processed: 1 });
+                            }
+                        }
+                    }}
+                >
+                    {text}
+                </div>
+            )
+        },
         { 
             title: '是否处理', 
             dataIndex: 'is_processed', 
@@ -164,6 +184,28 @@ const WechatListTable = () => {
                     <Select.Option value="同行">同行</Select.Option>
                     <Select.Option value="骗子">骗子</Select.Option>
                 </Select>
+            )
+        },
+        {
+            title: '备注',
+            dataIndex: 'remarks',
+            key: 'remarks',
+            hidden: isWechatOnly,
+            render: (val, record) => (
+                <Input 
+                    placeholder="添加备注" 
+                    defaultValue={val} 
+                    onBlur={(e) => {
+                        if (e.target.value !== val) {
+                            handleUpdate(record.id, { remarks: e.target.value });
+                        }
+                    }}
+                    onPressEnter={(e) => {
+                        if (e.target.value !== val) {
+                            handleUpdate(record.id, { remarks: e.target.value });
+                        }
+                    }}
+                />
             )
         },
         { title: '录入人', dataIndex: 'inputter', key: 'inputter' },

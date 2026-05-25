@@ -293,13 +293,6 @@ window.clearViewers = async function() {
     } catch (e) {}
 }
 
-window.showToast = function(message) {
-    const toast = document.getElementById("toast");
-    toast.innerText = message;
-    toast.classList.add("show");
-    setTimeout(() => toast.classList.remove("show"), 1500);
-}
-
 window.copyPlainText = function(event, text, msg = "已复制") {
     if (event) event.stopPropagation();
     if (!text) return;
@@ -553,29 +546,21 @@ window.clearExpiredIdList = async function() {
 }
 
 window.editIdProjectTitle = async function(itemId, oldTitle) {
+    if (window.showInputModal) {
+        window.showInputModal("请输入新的演出名称:", oldTitle, async (newTitle) => {
+            if (newTitle && newTitle !== oldTitle) {
+                await performTitleUpdate(itemId, newTitle);
+            }
+        });
+        return;
+    }
+    
     // 兼容环境：如果 prompt 被禁用，尝试使用更通用的方式或提醒
     let newTitle;
     try {
         newTitle = window.prompt("请输入新的演出名称:", oldTitle);
     } catch (e) {
         console.error("prompt error:", e);
-        // 如果是在 Ant Design 环境下，可以尝试调用全局 message
-        if (window.antd && window.antd.Modal) {
-            window.antd.Modal.confirm({
-                title: '修改演出名称',
-                content: React.createElement(window.antd.Input, {
-                    defaultValue: oldTitle,
-                    onChange: (e) => (window._temp_legacy_title = e.target.value)
-                }),
-                onOk: async () => {
-                    const val = window._temp_legacy_title || oldTitle;
-                    if (val && val !== oldTitle) {
-                        await performTitleUpdate(itemId, val);
-                    }
-                }
-            });
-            return;
-        }
         alert("当前环境不支持快捷输入，请在 PC 端浏览器尝试。");
         return;
     }

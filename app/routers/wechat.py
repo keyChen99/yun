@@ -41,8 +41,9 @@ async def update_wechat_item(item_id: int, request: Request):
     payload = await request.json()
     is_processed = payload.get("is_processed")
     tag = payload.get("tag")
+    remarks = payload.get("remarks")
     
-    db.update_wechat(item_id, is_processed, tag)
+    db.update_wechat(item_id, is_processed, tag, remarks)
     return {"status": "success", "msg": "更新成功"}
 
 @router.get("/api/wechat/stats/today")
