@@ -1,11 +1,12 @@
-import { defineConfig } from 'vite'
+import { defineConfig, splitVendorChunkPlugin } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), splitVendorChunkPlugin()],
   build: {
-    outDir: 'dist', // 构建后的文件夹名称
+    outDir: 'dist',
     emptyOutDir: true,
+    chunkSizeWarningLimit: 1000, // 提高报警阈值到 1MB
   },
   server: {
     proxy: {

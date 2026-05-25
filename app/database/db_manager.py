@@ -880,7 +880,9 @@ def get_virtual_numbers_paginated(search=None, page=1, page_size=20, has_mobile=
     
     return {
         "total": total,
-        "items": [dict(row) for row in rows]
+        "items": [dict(row) for row in rows],
+        "page": page,
+        "page_size": page_size
     }
 
 def save_virtual_numbers_bulk(items):

@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 logger.info("正在加载应用模块...")
 
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from app.core.config import AUTH_PASSWORD, SUB_ADMIN_PASSWORD, WECHAT_ONLY_PASSWORD, ROLE_PERMISSIONS, is_local_ip
@@ -45,6 +46,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 开启 Gzip 压缩
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 # 权限控制中间件
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
@@ -54,6 +58,8 @@ async def auth_middleware(request: Request, call_next):
         "/health",
         "/api/auth",
         "/api/auth/check",
+        "/api/shows",
+        "/api/events",
         "/assets",
         "/favicon.ico"
     ]
