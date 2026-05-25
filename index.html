@@ -18,14 +18,20 @@
     <h1 class="title">演出库存监控系统</h1>
 
     <div id="homeView" style="display:none;">
-        <div class="entry-grid">
-            <button class="entry-btn" onclick="showView('inventory')">查看库存</button>
-            <button class="entry-btn" onclick="showView('viewers')">查看观影人</button>
-            <button class="entry-btn" onclick="showView('virtual_numbers')">虚拟号表</button>
-            <button class="entry-btn" onclick="showView('idlist')">ID 列表</button>
-            <button class="entry-btn" style="background: #13c2c2; color: white;" onclick="showView('shows')">配置演出</button>
-            <button class="entry-btn" style="background: #722ed1; color: white;" onclick="showView('ticketing')">票务系统</button>
-            <button class="entry-btn" style="background: #faad14; color: white;" onclick="showView('chat_generator')">聊天生成</button>
+        <div class="entry-grid" id="mainEntryGrid">
+            <!-- 所有按钮初始均隐藏，由 JS 根据权限显示 -->
+            <button id="wechatBtn" class="entry-btn" style="background: #eb2f96; color: white; display: none;" onclick="showView('wechat')">微信列表</button>
+            <div id="adminFunctions" style="display: contents;">
+                <button class="entry-btn" style="display: none;" onclick="showView('inventory')">查看库存</button>
+                <button class="entry-btn" style="display: none;" onclick="showView('viewers')">查看观影人</button>
+                <button class="entry-btn" style="display: none;" onclick="showView('virtual_numbers')">虚拟号表</button>
+                <button class="entry-btn" style="display: none;" onclick="showView('idlist')">ID 列表</button>
+                <button class="entry-btn" style="background: #13c2c2; color: white; display: none;" onclick="showView('shows')">配置演出</button>
+                <button class="entry-btn" style="background: #722ed1; color: white; display: none;" onclick="showView('ticketing')">票务系统</button>
+                <button class="entry-btn" style="background: #faad14; color: white; display: none;" onclick="showView('chat_generator')">聊天生成</button>
+            </div>
+            <button id="loginBtn" class="entry-btn" style="background: #8c8c8c; color: white;" onclick="promptLogin()">管理登录</button>
+            <button id="logoutBtn" class="entry-btn" style="background: #ff4d4f; color: white; display: none;" onclick="logout()">退出登录</button>
         </div>
     </div>
 
@@ -96,7 +102,93 @@
                 overlay.style.opacity = '0';
                 setTimeout(() => overlay.style.display = 'none', 500);
             }
+            updateUIByAuth();
         };
+
+        function updateUIByAuth() {
+            const token = localStorage.getItem('auth_token');
+            const role = localStorage.getItem('auth_role');
+            const permissions = JSON.parse(localStorage.getItem('auth_permissions') || '[]');
+            
+            const adminFunctions = document.getElementById('adminFunctions');
+            const wechatBtn = document.getElementById('wechatBtn');
+            const loginBtn = document.getElementById('loginBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+            
+            if (token) {
+                if (loginBtn) loginBtn.style.display = 'none';
+                if (logoutBtn) logoutBtn.style.display = 'block';
+                
+                // 处理微信列表按钮显示逻辑
+                if (wechatBtn) {
+                    const canSeeWechat = role === 'admin' || role === 'wechat_only' || permissions.includes('/api/wechat');
+                    wechatBtn.style.display = canSeeWechat ? 'block' : 'none';
+                }
+
+                if (role === 'admin') {
+                    // 超级管理员显示全部
+                    if (adminFunctions) {
+                        adminFunctions.style.display = 'contents';
+                        Array.from(adminFunctions.children).forEach(child => child.style.display = 'block');
+                    }
+                } else {
+                    // 子管理员或微信专员按权限显示
+                    if (adminFunctions) {
+                        adminFunctions.style.display = 'contents';
+                        Array.from(adminFunctions.children).forEach((child, index) => {
+                            const isAllowed = permissions.some(p => {
+                                if (p === '/api/idlist' && index === 3) return true;
+                                if (p === '/api/shows' && index === 4) return true;
+                                if (p === '/api/viewers' && index === 1) return true;
+                                return false;
+                            });
+                            child.style.display = isAllowed ? 'block' : 'none';
+                        });
+                    }
+                }
+            } else {
+                if (wechatBtn) wechatBtn.style.display = 'none';
+                if (adminFunctions) adminFunctions.style.display = 'none';
+                if (loginBtn) loginBtn.style.display = 'block';
+                if (logoutBtn) logoutBtn.style.display = 'none';
+            }
+        }
+
+        async function promptLogin() {
+            const password = prompt("请输入管理密码：");
+            if (!password) return;
+            
+            try {
+                const res = await fetch("/api/auth", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ password })
+                });
+                const result = await res.json();
+                if (result.status === "success") {
+                    localStorage.setItem('auth_token', password);
+                    localStorage.setItem('auth_role', result.role);
+                    localStorage.setItem('auth_permissions', JSON.stringify(result.permissions));
+                    alert("登录成功");
+                    location.reload();
+                } else {
+                    alert("密码错误");
+                }
+            } catch (e) {
+                alert("登录失败");
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_role');
+            localStorage.removeItem('auth_permissions');
+            alert("已退出登录");
+            // 确保退出后回到首页 hash，避免停留在已无权访问的路径
+            window.location.hash = '#/';
+            location.reload();
+        }
+
         // 兜底隐藏
         setTimeout(window.hideLoading, 5000);
     </script>

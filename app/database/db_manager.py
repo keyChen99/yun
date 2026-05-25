@@ -543,6 +543,131 @@ def init_virtual_numbers_db():
     conn.commit()
     conn.close()
 
+# 6. 微信列表操作
+def init_wechat_db():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS wechat_list (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            wechat_id TEXT UNIQUE,
+            is_processed INTEGER DEFAULT 0,
+            tag TEXT,
+            inputter TEXT,
+            added_time TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+def save_wechat_bulk(wechat_ids, inputter):
+    """批量保存微信数据，支持查重"""
+    init_wechat_db()
+    conn = get_db()
+    cursor = conn.cursor()
+    added_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    valid_count = 0
+    duplicate_count = 0
+    
+    for wid in wechat_ids:
+        wid = wid.strip()
+        if not wid:
+            continue
+            
+        try:
+            cursor.execute(
+                "INSERT INTO wechat_list (wechat_id, inputter, added_time) VALUES (?, ?, ?)",
+                (wid, inputter, added_time)
+            )
+            valid_count += 1
+        except sqlite3.IntegrityError:
+            duplicate_count += 1
+            
+    conn.commit()
+    conn.close()
+    return valid_count, duplicate_count
+
+def get_all_wechat(search=None, status=None, tag=None):
+    init_wechat_db()
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    query = "SELECT * FROM wechat_list WHERE 1=1"
+    params = []
+    
+    if search:
+        query += " AND (wechat_id LIKE ? OR inputter LIKE ?)"
+        params.extend([f'%{search}%', f'%{search}%'])
+    
+    if status is not None:
+        query += " AND is_processed = ?"
+        params.append(status)
+        
+    if tag:
+        query += " AND tag = ?"
+        params.append(tag)
+        
+    query += " ORDER BY id DESC"
+    cursor.execute(query, params)
+    
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def update_wechat(wid, is_processed=None, tag=None):
+    conn = get_db()
+    cursor = conn.cursor()
+    updates = []
+    params = []
+    
+    if is_processed is not None:
+        updates.append("is_processed = ?")
+        params.append(is_processed)
+    
+    if tag is not None:
+        updates.append("tag = ?")
+        params.append(tag)
+        
+    if not updates:
+        return
+        
+    params.append(wid)
+    query = f"UPDATE wechat_list SET {', '.join(updates)} WHERE id = ?"
+    cursor.execute(query, params)
+    conn.commit()
+    conn.close()
+
+def delete_wechat(wid):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM wechat_list WHERE id = ?", (wid,))
+    conn.commit()
+    conn.close()
+
+def get_wechat_stats_today():
+    """获取今日各录入人的新增数量 (当天 00:00:00 - 23:59:59)"""
+    init_wechat_db()
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # 获取今日日期起始和结束
+    now = datetime.now()
+    start_of_today = now.strftime("%Y-%m-%d 00:00:00")
+    end_of_today = now.strftime("%Y-%m-%d 23:59:59")
+    
+    query = """
+        SELECT inputter, COUNT(*) as count 
+        FROM wechat_list 
+        WHERE added_time BETWEEN ? AND ?
+        GROUP BY inputter
+    """
+    cursor.execute(query, (start_of_today, end_of_today))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+# 7. 演出日程操作
 def init_show_schedules_db():
     conn = get_db()
     cursor = conn.cursor()

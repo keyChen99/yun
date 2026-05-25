@@ -1,8 +1,17 @@
 import os
 import re
 
-# 授权密码
-AUTH_PASSWORD = "248248"
+# 授权密码配置
+AUTH_PASSWORD = "248248"  # 超级管理员：访问全部内容
+SUB_ADMIN_PASSWORD = "124124"  # 子管理员：访问 ID 列表、配置演出、查看观影人
+WECHAT_ONLY_PASSWORD = "666666"  # 微信专员：仅访问微信列表
+
+# 权限配置
+ROLE_PERMISSIONS = {
+    AUTH_PASSWORD: ["all"],
+    SUB_ADMIN_PASSWORD: ["/api/idlist", "/api/shows", "/api/viewers", "/api/auth"],
+    WECHAT_ONLY_PASSWORD: ["/api/wechat", "/api/auth"]
+}
 
 # AI 相关配置
 AI_API_KEY = os.getenv("AI_API_KEY", "sk-zgclqbwmmqjcccdtlzlbjsutzkuiycbujyxzlxmmjrdywucz")

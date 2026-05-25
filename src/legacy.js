@@ -22,7 +22,8 @@ window.showView = function(view, searchKeyword = "") {
         'virtual_numbers': '/virtual_numbers',
         'shows': '/shows',
         'ticketing': '/ticketing',
-        'chat_generator': '/chat_generator'
+        'chat_generator': '/chat_generator',
+        'wechat': '/wechat'
     };
 
     const path = routeMap[view] || '/';
