@@ -3,13 +3,14 @@
 提供数据库备份下载功能
 """
 
-from fastapi import APIRouter, FileResponse
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse, StreamingResponse
 import sqlite3
 import json
 import os
 from datetime import datetime
 from pathlib import Path
+from io import BytesIO
 
 router = APIRouter(prefix="/api/export", tags=["export"])
 
@@ -29,10 +30,10 @@ async def export_sql():
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"stock_backup_{timestamp}.sql"
         
-        return FileResponse(
-            content=sql_content.encode('utf-8'),
+        return StreamingResponse(
+            iter([sql_content.encode('utf-8')]),
             media_type="text/plain",
-            filename=filename
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
@@ -63,10 +64,12 @@ async def export_json():
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"stock_backup_{timestamp}.json"
         
-        return FileResponse(
-            content=json.dumps(data, indent=2, ensure_ascii=False, default=str).encode('utf-8'),
+        json_content = json.dumps(data, indent=2, ensure_ascii=False, default=str)
+        
+        return StreamingResponse(
+            iter([json_content.encode('utf-8')]),
             media_type="application/json",
-            filename=filename
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
