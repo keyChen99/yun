@@ -21,7 +21,9 @@ const WechatListTable = () => {
     const [submitting, setSubmitting] = useState(false);
 
     const role = localStorage.getItem('auth_role');
+    const token = localStorage.getItem('auth_token');
     const isWechatOnly = role === 'wechat_only';
+    const isSuperAdmin = token === '248248';
 
     const fetchData = useCallback(async (silent = true) => {
         setLoading(true);
@@ -134,22 +136,25 @@ const WechatListTable = () => {
             title: '微信', 
             dataIndex: 'wechat_id', 
             key: 'wechat_id',
-            render: (text, record) => (
-                <div 
-                    style={{ cursor: 'pointer', color: '#1890ff', fontWeight: '500' }}
-                    onClick={(e) => {
-                        if (window.copyPlainText) {
-                            window.copyPlainText(e, text, '微信ID已复制');
-                            // 自动转换处理状态为已处理
-                            if (record.is_processed === 0) {
-                                handleUpdate(record.id, { is_processed: 1 });
+            render: (text, record) => {
+                if (!isSuperAdmin) return <span>{text}</span>;
+                return (
+                    <div 
+                        style={{ cursor: 'pointer', color: '#1890ff', fontWeight: '500' }}
+                        onClick={(e) => {
+                            if (window.copyPlainText) {
+                                window.copyPlainText(e, text, '微信ID已复制');
+                                // 自动转换处理状态为已处理
+                                if (record.is_processed === 0) {
+                                    handleUpdate(record.id, { is_processed: 1 });
+                                }
                             }
-                        }
-                    }}
-                >
-                    {text}
-                </div>
-            )
+                        }}
+                    >
+                        {text}
+                    </div>
+                );
+            }
         },
         { 
             title: '是否处理', 
