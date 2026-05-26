@@ -131,7 +131,16 @@ const WechatListTable = () => {
     };
 
     const columns = [
-        { title: '序号', key: 'index', render: (_, __, index) => index + 1, width: 70 },
+        { 
+            title: '序号', 
+            key: 'index', 
+            render: (_, record, index) => (
+                <span style={{ color: (record.remarks && record.remarks.trim()) ? 'red' : 'inherit', fontWeight: (record.remarks && record.remarks.trim()) ? 'bold' : 'normal' }}>
+                    {index + 1}
+                </span>
+            ), 
+            width: 70 
+        },
         { 
             title: '微信', 
             dataIndex: 'wechat_id', 
