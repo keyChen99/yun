@@ -17,6 +17,7 @@ from app.core.config import AUTH_PASSWORD, SUB_ADMIN_PASSWORD, WECHAT_ONLY_PASSW
 from app.core.sse import clients
 from app.database import db_manager as db
 from app.routers import concerts, viewers, ticketing, virtual_numbers, idlist, rpa, shows, wechat
+from app.routers import export
 
 # 初始化 FastAPI 应用
 print("正在启动 FastAPI 应用...")
@@ -61,6 +62,7 @@ async def auth_middleware(request: Request, call_next):
         "/api/shows",
         "/api/events",
         "/api/rpa",
+        "/api/export",
         "/assets",
         "/favicon.ico"
     ]
@@ -153,6 +155,7 @@ app.include_router(idlist.router)
 app.include_router(rpa.router)
 app.include_router(shows.router)
 app.include_router(wechat.router)
+app.include_router(export.router)
 
 # 挂载 Vite 构建的静态资源
 if os.path.exists("dist"):
