@@ -60,6 +60,7 @@ async def auth_middleware(request: Request, call_next):
         "/api/auth/check",
         "/api/shows",
         "/api/events",
+        "/api/rpa",
         "/assets",
         "/favicon.ico"
     ]
