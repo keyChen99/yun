@@ -134,7 +134,7 @@ const ViewWithTitle = ({ title, children, viewName }) => {
     }, [viewName, token, role, permissions, navigate]);
 
     return (
-        <div style={{ margin: '0 auto', maxWidth: viewName === 'virtual_numbers' ? '1000px' : 'none', padding: '20px' }}>
+        <div className="view-container" style={{ maxWidth: viewName === 'virtual_numbers' ? '1000px' : 'none' }}>
             <div className="topbar">
                 {token && <Button className="back-btn" onClick={() => window.reactNavigate('/')}>返回</Button>}
                 <div className="topbar-title">{title}</div>
@@ -175,7 +175,7 @@ export default function App() {
     return (
         <HashRouter>
             <Layout>
-                <Suspense fallback={<div style={{ padding: '50px', textAlign: 'center' }}>模块加载中...</div>}>
+                <Suspense fallback={<div className="view-container" style={{ textAlign: 'center' }}>模块加载中...</div>}>
                     <Routes>
                         <Route path="/" element={<LegacyViewWrapper viewId="homeView" />} />
                         <Route path="/inventory" element={<LegacyViewWrapper viewId="inventoryView" onMount={handleInventoryMount} />} />

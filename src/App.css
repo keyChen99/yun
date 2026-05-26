@@ -38,6 +38,12 @@ body.desktop-mode {
     max-width: 1200px;
     margin: 0 auto;
 }
+/* 视图容器 */
+.view-container {
+    margin: 0 auto;
+    padding: 20px;
+}
+
 /* 针对超小屏幕调整容器 */
 @media (max-width: 350px) {
     .card-container {
@@ -151,6 +157,9 @@ body.desktop-mode {
     }
     body {
         padding: 12px;
+    }
+    .view-container {
+        padding: 0px; /* 移动端减少内边距 */
     }
     .title {
         font-size: 1.3rem;

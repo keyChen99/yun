@@ -195,7 +195,6 @@ const WechatListTable = () => {
             title: '备注',
             dataIndex: 'remarks',
             key: 'remarks',
-            hidden: isWechatOnly,
             render: (val, record) => (
                 <Input 
                     placeholder="添加备注" 
