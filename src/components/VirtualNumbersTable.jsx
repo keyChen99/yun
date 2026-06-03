@@ -92,16 +92,28 @@ const VirtualNumbersTable = ({ standalone = false }) => {
         try {
             const res = await fetch("/api/virtual_numbers/used_mobiles");
             const result = await res.json();
-            setUsedMobiles(result);
-        } catch (e) {}
+            if (Array.isArray(result)) {
+                setUsedMobiles(result);
+            } else {
+                setUsedMobiles([]);
+            }
+        } catch (e) {
+            setUsedMobiles([]);
+        }
     };
 
     const fetchMobileLibrary = async () => {
         try {
             const res = await fetch("/api/mobile_library");
             const result = await res.json();
-            setMobileLibrary(result.map(m => m.phone));
-        } catch (e) {}
+            if (Array.isArray(result)) {
+                setMobileLibrary(result.map(m => m.phone));
+            } else {
+                setMobileLibrary([]);
+            }
+        } catch (e) {
+            setMobileLibrary([]);
+        }
     };
 
     const handleFetchSms = async (record) => {
@@ -383,13 +395,14 @@ const VirtualNumbersTable = ({ standalone = false }) => {
             align: 'center',
             render: (text, record) => {
                 let displayText = "-";
-                if (text && text.includes("-")) {
+                if (text && typeof text === 'string' && text.includes("-")) {
                     const [type, phone] = text.split("-");
                     const shortType = type === "优酷" ? "优" : (type === "淘宝" ? "淘" : type);
                     const last4 = phone.slice(-4);
                     displayText = `${shortType}-${last4}`;
                 } else if (text) {
-                    displayText = text.length > 4 ? text.slice(-4) : text;
+                    const strText = String(text);
+                    displayText = strText.length > 4 ? strText.slice(-4) : strText;
                 }
 
                 return (
@@ -399,7 +412,7 @@ const VirtualNumbersTable = ({ standalone = false }) => {
                              setCurrentEditingRecord(record);
                              fetchUsedMobiles();
                              fetchMobileLibrary();
-                             if (text && text.includes("-")) {
+                             if (text && typeof text === 'string' && text.includes("-")) {
                                  const [type, phone] = text.split("-");
                                  setSelectedMobileType(type);
                                  setSelectedMobileNumber(phone);
@@ -461,7 +474,7 @@ const VirtualNumbersTable = ({ standalone = false }) => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '300px', overflowY: 'auto' }}>
                 {mobileLibrary.map(n => {
                     const fullStr = `${shortcutMobileType}-${n}`;
-                    const isUsed = usedMobiles.includes(fullStr);
+                    const isUsed = Array.isArray(usedMobiles) && usedMobiles.includes(fullStr);
                     return (
                         <div 
                             key={n} 
@@ -736,7 +749,7 @@ const VirtualNumbersTable = ({ standalone = false }) => {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', maxHeight: '300px', overflowY: 'auto', padding: '10px' }}>
                     {mobileLibrary.map(num => {
                         const fullStr = `${selectedMobileType}-${num}`;
-                        const isUsed = usedMobiles.includes(fullStr);
+                        const isUsed = Array.isArray(usedMobiles) && usedMobiles.includes(fullStr);
                         const isSelected = selectedMobileNumber === num;
                         return (
                             <Tag 

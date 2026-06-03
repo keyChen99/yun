@@ -23,6 +23,7 @@ window.showView = function(view, searchKeyword = "") {
         'shows': '/shows',
         'ticketing': '/ticketing',
         'chat_generator': '/chat_generator',
+        'backup': '/backup',
         'wechat': '/wechat',
         'wechat_logs': '/wechat/logs'
     };

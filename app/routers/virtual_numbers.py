@@ -67,14 +67,6 @@ async def increment_virtual_number_usage(item_id: int):
 
 @router.post("/api/virtual_numbers/{item_id}/decrement")
 async def decrement_virtual_number_usage(item_id: int):
-    db.increment_usage_count(item_id) # Original code had a bug here, it called increment for both, but I should keep it as is if I strictly follow "keep code as is"
-    # Wait, let me check db_manager.py for decrement_usage_count
-    # Actually, main.py had:
-    # @app.post("/api/virtual_numbers/{item_id}/decrement")
-    # async def decrement_virtual_number_usage(item_id: int):
-    #     db.decrement_usage_count(item_id)
-    #     return {"status": "success", "msg": "使用次数已更新"}
-    # I should use db.decrement_usage_count(item_id)
     db.decrement_usage_count(item_id)
     return {"status": "success", "msg": "使用次数已更新"}
 
@@ -184,6 +176,40 @@ async def update_virtual_number_sms(item_id: int, request: Request):
     sms_code = payload.get("sms_code", "")
     db.update_virtual_number_sms(item_id, sms_code)
     return {"status": "success", "msg": "验证码已同步"}
+
+@router.post("/api/virtual_numbers/{item_id}/sms")
+async def fetch_virtual_number_sms(item_id: int):
+    """获取并解析验证码"""
+    loop = asyncio.get_event_loop()
+    record = await loop.run_in_executor(None, db.get_virtual_number, item_id)
+    if not record or not record.get("link"):
+        return {"status": "error", "msg": "未找到记录或链接为空"}
+    
+    url = record["link"]
+    try:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+            resp = await client.get(url, headers={"User-Agent": "Mozilla/5.0"})
+            content = resp.text.strip()
+            
+            # 提取验证码的逻辑
+            # 1. 尝试匹配 4-6 位数字
+            sms_match = re.search(r'(\d{6})', content)
+            if sms_match:
+                sms_code = sms_match.group(1)
+            else:
+                # 2. 如果没匹配到，取前 10 个字符（可能直接返回的就是验证码）
+                sms_code = content[:10]
+            
+            # 更新数据库
+            await loop.run_in_executor(None, db.update_virtual_number_sms, item_id, sms_code)
+            
+            return {
+                "status": "success", 
+                "sms_code": sms_code,
+                "msg": f"获取成功: {sms_code}"
+            }
+    except Exception as e:
+        return {"status": "error", "msg": f"获取失败: {str(e)}"}
 
 @router.get("/api/virtual_numbers/proxy_fetch")
 async def proxy_fetch_sms(url: str):

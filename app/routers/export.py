@@ -107,6 +107,28 @@ def export_db_json():
     )
 
 
+@router.get("/api/export/db/file")
+def export_db_file():
+    """直接下载整个 SQLite .db 文件"""
+    from fastapi.responses import FileResponse
+    logger.info(f"收到数据库文件导出请求，路径: {DB_PATH}")
+    if not _check_db_exists():
+        logger.error(f"导出失败：数据库文件不存在 {DB_PATH}")
+        return JSONResponse(
+            status_code=404,
+            content={"status": "error", "msg": f"数据库文件不存在: {DB_PATH}"}
+        )
+
+    timestamp = _get_timestamp()
+    filename = f"stock_full_backup_{timestamp}.db"
+
+    return FileResponse(
+        path=DB_PATH,
+        filename=filename,
+        media_type="application/x-sqlite3"
+    )
+
+
 @router.get("/api/export/db/info")
 def export_db_info():
     """获取数据库统计信息（表数、各表行数、文件大小等）"""

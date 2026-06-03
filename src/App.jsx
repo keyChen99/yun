@@ -14,6 +14,7 @@ const ShowScheduleModule = React.lazy(() => import('./components/ShowScheduleMod
 const VirtualNumbersTable = React.lazy(() => import('./components/VirtualNumbersTable'));
 const CountdownFloating = React.lazy(() => import('./components/CountdownFloating'));
 const CloudShortcutTool = React.lazy(() => import('./components/CloudShortcutTool'));
+const BackupManagement = React.lazy(() => import('./components/BackupManagement'));
 
 // --- 路由辅助组件 ---
 const LegacyViewWrapper = ({ viewId, onMount }) => {
@@ -194,6 +195,11 @@ export default function App() {
                         <Route path="/ticketing" element={
                             <ViewWithTitle title="票务管理系统" viewName="ticketing">
                                 <TicketingSystem standalone={true} />
+                            </ViewWithTitle>
+                        } />
+                        <Route path="/backup" element={
+                            <ViewWithTitle title="系统备份" viewName="backup">
+                                <BackupManagement />
                             </ViewWithTitle>
                         } />
                         <Route path="/chat_generator" element={

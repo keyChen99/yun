@@ -1018,6 +1018,14 @@ def update_virtual_number_machine_code(item_id, machine_code):
     conn.commit()
     conn.close()
 
+def get_virtual_number(item_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM virtual_numbers WHERE id = ?", (item_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
 def update_virtual_number_sms(item_id, sms_code):
     conn = get_db()
     cursor = conn.cursor()
