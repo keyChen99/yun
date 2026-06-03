@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Card, Tag, Button, message } from 'antd';
-import { HistoryOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Table, Card, Tag, Button, message, Space } from 'antd';
+import { HistoryOutlined, ReloadOutlined, FileExcelOutlined } from '@ant-design/icons';
+import { exportToExcel } from '../utils/excelExport';
 
 const VisitLogsTable = () => {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
+
+    const isAdmin = localStorage.getItem('auth_role') === 'admin';
 
     const fetchData = async () => {
         setLoading(true);
@@ -28,6 +31,48 @@ const VisitLogsTable = () => {
         fetchData();
     }, []);
 
+    const handleExport = async () => {
+        setLoading(true);
+        try {
+            // 获取所有日志，不带 500 条限制
+            const res = await fetch("/api/wechat/logs?limit=0", {
+                headers: { "Authorization": localStorage.getItem("auth_token") || "" }
+            });
+            const allData = await res.json();
+            
+            if (allData.status === "error") {
+                message.error(allData.msg);
+                return;
+            }
+
+            const exportColumns = [
+                { title: '访问时间', dataIndex: 'visit_time' },
+                { title: 'IP', dataIndex: 'ip' },
+                { title: '角色', dataIndex: 'role' },
+                { title: '录入身份', dataIndex: 'inputter' },
+                { title: '设备信息', dataIndex: 'user_agent' }
+            ];
+            
+            const roleMap = {
+                'admin': '超级管理员',
+                'sub_admin': '子管理员',
+                'wechat_only': '微信专员'
+            };
+            
+            const exportData = allData.map(item => ({
+                ...item,
+                role: roleMap[item.role] || item.role
+            }));
+            
+            exportToExcel(exportData, exportColumns, '访问日志_全部.xlsx');
+            message.success(`已导出 ${exportData.length} 条数据`);
+        } catch (e) {
+            message.error("导出失败");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const columns = [
         { title: '序号', key: 'index', render: (_, __, index) => index + 1, width: 70 },
         { title: '访问时间', dataIndex: 'visit_time', key: 'visit_time', width: 180 },
@@ -49,7 +94,10 @@ const VisitLogsTable = () => {
                         <HistoryOutlined style={{ marginRight: 8, color: '#1890ff' }} />
                         微信列表访问日志 (最近 500 条)
                     </div>
-                    <Button icon={<ReloadOutlined />} onClick={fetchData}>刷新</Button>
+                    <Space>
+                        <Button icon={<ReloadOutlined />} onClick={fetchData}>刷新</Button>
+                        {isAdmin && <Button icon={<FileExcelOutlined />} onClick={handleExport} loading={loading}>导出 Excel</Button>}
+                    </Space>
                 </div>
                 <Table 
                     columns={columns} 

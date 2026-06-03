@@ -41,6 +41,7 @@
         <div class="topbar">
             <button class="back-btn" onclick="showView('home')">返回</button>
             <div class="topbar-title">演出库存列表</div>
+            <button id="exportInventoryBtn" class="primary-btn" onclick="exportInventoryToExcel()" style="margin: 0; margin-left: auto; background: #52c41a; font-size: 12px; height: 32px; line-height: 32px; padding: 0 15px; display: none;">导出 Excel</button>
         </div>
         <div id="cardContainer" class="card-container"></div>
     </div>
@@ -49,6 +50,7 @@
         <div class="topbar">
             <button class="back-btn" onclick="showView('home')">返回</button>
             <div class="topbar-title">观影人管理</div>
+            <button id="exportViewersBtn" class="primary-btn" onclick="exportViewersToExcel()" style="margin: 0; margin-left: auto; background: #52c41a; font-size: 12px; height: 32px; line-height: 32px; padding: 0 15px; display: none;">导出 Excel</button>
         </div>
         <div class="viewer-panel">
             <textarea id="viewerInput" class="viewer-input" placeholder="粘贴包含姓名和身份证的复杂文本，自动识别提取"></textarea>
@@ -62,6 +64,7 @@
         <div class="topbar">
             <button class="back-btn" onclick="showView('home')">返回</button>
             <div class="topbar-title">项目与票价ID列表</div>
+            <button id="exportIdListBtn" class="primary-btn" onclick="exportIdListToExcel()" style="margin: 0; margin-left: auto; background: #52c41a; font-size: 12px; height: 32px; line-height: 32px; padding: 0 15px; display: none;">导出 Excel</button>
         </div>
         <div class="viewer-panel">
             <div style="display: flex; gap: 10px; margin-bottom: 10px;">
@@ -152,6 +155,10 @@
             const loginBtn = document.getElementById('loginBtn');
             const logoutBtn = document.getElementById('logoutBtn');
             
+            const exportInventoryBtn = document.getElementById('exportInventoryBtn');
+            const exportViewersBtn = document.getElementById('exportViewersBtn');
+            const exportIdListBtn = document.getElementById('exportIdListBtn');
+            
             if (token) {
                 if (loginBtn) loginBtn.style.display = 'none';
                 if (logoutBtn) logoutBtn.style.display = 'block';
@@ -171,6 +178,11 @@
                 if (backupBtn) {
                     backupBtn.style.display = (role === 'admin') ? 'block' : 'none';
                 }
+
+                // 处理导出按钮显示逻辑
+                if (exportInventoryBtn) exportInventoryBtn.style.display = (role === 'admin') ? 'block' : 'none';
+                if (exportViewersBtn) exportViewersBtn.style.display = (role === 'admin') ? 'block' : 'none';
+                if (exportIdListBtn) exportIdListBtn.style.display = (role === 'admin') ? 'block' : 'none';
 
                 if (role === 'admin') {
                     // 超级管理员显示全部
@@ -196,6 +208,9 @@
             } else {
                 if (wechatBtn) wechatBtn.style.display = 'none';
                 if (backupBtn) backupBtn.style.display = 'none';
+                if (exportInventoryBtn) exportInventoryBtn.style.display = 'none';
+                if (exportViewersBtn) exportViewersBtn.style.display = 'none';
+                if (exportIdListBtn) exportIdListBtn.style.display = 'none';
                 if (adminFunctions) adminFunctions.style.display = 'none';
                 if (loginBtn) loginBtn.style.display = 'block';
                 if (logoutBtn) logoutBtn.style.display = 'none';

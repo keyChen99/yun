@@ -737,12 +737,15 @@ def record_wechat_visit(ip, user_agent, role, inputter):
     conn.commit()
     conn.close()
 
-def get_visit_logs():
+def get_visit_logs(limit=500):
     """获取所有访问日志，按时间倒序"""
     init_visit_logs_db()
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM wechat_visit_logs ORDER BY id DESC LIMIT 500")
+    if limit and limit > 0:
+        cursor.execute("SELECT * FROM wechat_visit_logs ORDER BY id DESC LIMIT ?", (limit,))
+    else:
+        cursor.execute("SELECT * FROM wechat_visit_logs ORDER BY id DESC")
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]

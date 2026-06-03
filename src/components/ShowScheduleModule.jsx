@@ -6,8 +6,9 @@ import {
 } from 'antd';
 import { 
   PlusOutlined, EditOutlined, DeleteOutlined, 
-  DashboardOutlined, FileImageOutlined
+  DashboardOutlined, FileImageOutlined, FileExcelOutlined
 } from '@ant-design/icons';
+import { exportToExcel } from '../utils/excelExport';
 
 const ShowScheduleModule = () => {
     const [data, setData] = useState([]);
@@ -18,6 +19,7 @@ const ShowScheduleModule = () => {
     const [pendingShows, setPendingShows] = useState([]); // 待保存的演出列表
 
     const role = localStorage.getItem('auth_role');
+    const isAdmin = role === 'admin';
     const inputter = localStorage.getItem('wechat_inputter') || "";
 
     const fetchData = useCallback(async () => {
@@ -126,6 +128,14 @@ const ShowScheduleModule = () => {
         }
     };
 
+    const handleExport = () => {
+        const exportColumns = [
+            { title: '演出名称', dataIndex: 'show_name' },
+            { title: '开票时间', dataIndex: 'sale_time' }
+        ];
+        exportToExcel(data, exportColumns, '演出日程列表.xlsx');
+    };
+
     const handleParseImage = async (file) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -218,7 +228,10 @@ const ShowScheduleModule = () => {
                         <Button danger icon={<DeleteOutlined />}>清除过期</Button>
                     </Popconfirm>
                 </Space>
-                <Button icon={<DashboardOutlined />} onClick={fetchData}>刷新列表</Button>
+                <Space>
+                    <Button icon={<DashboardOutlined />} onClick={fetchData}>刷新列表</Button>
+                    {isAdmin && <Button icon={<FileExcelOutlined />} onClick={handleExport}>导出 Excel</Button>}
+                </Space>
             </div>
 
             <Table 

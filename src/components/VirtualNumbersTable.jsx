@@ -6,8 +6,9 @@ import {
 import { 
   PlusOutlined, MinusOutlined, DeleteOutlined, 
   RocketOutlined, TeamOutlined, CopyOutlined, 
-  SettingOutlined, SearchOutlined 
+  SettingOutlined, SearchOutlined, FileExcelOutlined
 } from '@ant-design/icons';
+import { exportToExcel } from '../utils/excelExport';
 
 const MOBILE_TYPES = ["优酷", "淘宝", "大麦"];
 
@@ -43,6 +44,8 @@ const VirtualNumbersTable = ({ standalone = false }) => {
     // 修复链接状态
     const [repairOldIp, setRepairOldIp] = useState("");
     const [repairNewIp, setRepairNewIp] = useState("");
+
+    const isAdmin = localStorage.getItem('auth_role') === 'admin';
 
     const loadData = useCallback(async (page, size, search = searchQuery, hasMobile = hasMobileFilter, usageCount = usageCountFilter, cancellationCount = cancellationCountFilter, hasNotes = hasNotesFilter) => {
         setLoading(true);
@@ -204,6 +207,44 @@ const VirtualNumbersTable = ({ standalone = false }) => {
         setSearchQuery(value);
         loadData(1, pageSize, value, hasMobileFilter, usageCountFilter, cancellationCountFilter, hasNotesFilter);
     }, [pageSize, hasMobileFilter, usageCountFilter, cancellationCountFilter, hasNotesFilter, loadData]);
+
+    const handleExport = useCallback(async () => {
+        setLoading(true);
+        try {
+            // 获取所有数据进行导出，不分页
+            const params = new URLSearchParams({ page: 1, page_size: 100000 });
+            if (searchQuery) params.append("search", searchQuery);
+            if (hasMobileFilter !== null) params.append("has_mobile", hasMobileFilter);
+            if (usageCountFilter !== null) params.append("usage_count", usageCountFilter);
+            if (cancellationCountFilter !== null) params.append("cancellation_count", cancellationCountFilter);
+            if (hasNotesFilter !== null) params.append("has_notes", hasNotesFilter);
+
+            const res = await fetch(`/api/virtual_numbers?${params.toString()}`, {
+                headers: { "ngrok-skip-browser-warning": "true" }
+            });
+            const result = await res.json();
+            const allData = result.items || [];
+            
+            const exportColumns = [
+                { title: 'ID', dataIndex: 'id' },
+                { title: '号码', dataIndex: 'phone' },
+                { title: '链接', dataIndex: 'link' },
+                { title: '验证码', dataIndex: 'sms_code' },
+                { title: '使用次数', dataIndex: 'usage_count' },
+                { title: '注销次数', dataIndex: 'cancellation_count' },
+                { title: '机器码', dataIndex: 'machine_code' },
+                { title: '手机号', dataIndex: 'mobile' },
+                { title: '备注', dataIndex: 'notes' },
+                { title: '添加时间', dataIndex: 'added_time' }
+            ];
+            exportToExcel(allData, exportColumns, '虚拟号列表_全部.xlsx');
+            message.success(`已导出 ${allData.length} 条数据`);
+        } catch (e) {
+            message.error("导出失败");
+        } finally {
+            setLoading(false);
+        }
+    }, [searchQuery, hasMobileFilter, usageCountFilter, cancellationCountFilter, hasNotesFilter]);
 
     const handleTableChange = useCallback((pagination) => {
         setCurrentPage(pagination.current);
@@ -635,6 +676,7 @@ const VirtualNumbersTable = ({ standalone = false }) => {
                         setCancellationCountFilter(null);
                         loadData(1, pageSize, "", null, null, null, null);
                     }}>刷新全部</Button>
+                    {isAdmin && <Button icon={<FileExcelOutlined />} onClick={handleExport} loading={loading}>导出 Excel</Button>}
                 </Space>
             </div>
 

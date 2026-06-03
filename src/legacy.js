@@ -52,6 +52,7 @@ window.showView = function(view, searchKeyword = "") {
 }
 
 // 获取后端演出数据
+let inventoryData = []; // 缓存演出数据用于导出
 window.loadInventory = async function() {
     try {
         const res = await fetch("/api/data", {
@@ -59,6 +60,7 @@ window.loadInventory = async function() {
         });
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
+        inventoryData = data;
         renderCards(data);
     } catch (e) {
         console.error("加载数据失败:", e);
@@ -73,6 +75,16 @@ window.loadInventory = async function() {
 }
 // 别名兼容旧代码
 window.loadData = window.loadInventory;
+
+window.exportInventoryToExcel = function() {
+    if (!inventoryData || inventoryData.length === 0) return window.showToast("暂无数据可导出");
+    const exportColumns = [
+        { title: '演出名称', dataIndex: 'name' },
+        { title: '日期', dataIndex: 'date' },
+        { title: '抓取时间', dataIndex: 'fetch_time' }
+    ];
+    window.exportToExcel(inventoryData, exportColumns, '演出库存列表.xlsx');
+}
 
 // 渲染演出卡片
 function renderCards(data) {
@@ -159,15 +171,43 @@ window.deleteCard = async function(event, id) {
 }
 
 // 观影人加载
+let viewersData = []; // 缓存观影人数据用于导出
 window.loadViewers = async function() {
     const listEl = document.getElementById("viewerList");
     try {
         const res = await fetch("/api/viewers", { headers: { "ngrok-skip-browser-warning": "true" } });
         const data = await res.json();
+        viewersData = data;
         renderViewers(data);
     } catch (e) {
         listEl.innerHTML = "<p style='color:red;'>加载观影人失败</p>";
     }
+}
+
+window.exportViewersToExcel = function() {
+    if (!viewersData || viewersData.length === 0) return window.showToast("暂无数据可导出");
+    
+    // 展平数据，每个成员一行
+    const exportData = [];
+    viewersData.forEach(group => {
+        const normalized = normalizeViewerGroup(group);
+        normalized.members.forEach(m => {
+            exportData.push({
+                desc: normalized.desc,
+                name: m.name,
+                id_number: m.id_number,
+                added_time: group.added_time
+            });
+        });
+    });
+
+    const exportColumns = [
+        { title: '分组/备注', dataIndex: 'desc' },
+        { title: '姓名', dataIndex: 'name' },
+        { title: '身份证号', dataIndex: 'id_number' },
+        { title: '添加时间', dataIndex: 'added_time' }
+    ];
+    window.exportToExcel(exportData, exportColumns, '观影人列表.xlsx');
 }
 
 function renderViewers(data) {
@@ -412,6 +452,32 @@ window.filterIdList = function() {
         });
     });
     renderIdList(filtered);
+}
+
+window.exportIdListToExcel = function() {
+    if (!originalIdListData || originalIdListData.length === 0) return window.showToast("暂无数据可导出");
+    
+    const exportData = [];
+    originalIdListData.forEach(project => {
+        project.tickets.forEach(ticket => {
+            exportData.push({
+                title: project.title,
+                itemId: project.itemId,
+                info: ticket.info,
+                ticketId: ticket.ticketId,
+                added_time: project.added_time
+            });
+        });
+    });
+
+    const exportColumns = [
+        { title: '项目名称', dataIndex: 'title' },
+        { title: '项目ID', dataIndex: 'itemId' },
+        { title: '票价信息', dataIndex: 'info' },
+        { title: '票价ID', dataIndex: 'ticketId' },
+        { title: '添加时间', dataIndex: 'added_time' }
+    ];
+    window.exportToExcel(exportData, exportColumns, 'ID列表.xlsx');
 }
 
 window.handleCheckboxChange = function(el) {

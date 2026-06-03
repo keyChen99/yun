@@ -5,8 +5,10 @@ import {
 } from 'antd';
 import { 
   SearchOutlined, PlusOutlined, DeleteOutlined, 
-  EditOutlined, HistoryOutlined, ReloadOutlined 
+  EditOutlined, HistoryOutlined, ReloadOutlined,
+  FileExcelOutlined
 } from '@ant-design/icons';
+import { exportToExcel } from '../utils/excelExport';
 import IdListRenderer from './IdListRenderer';
 
 const TicketingSystem = ({ standalone = false }) => {
@@ -24,6 +26,8 @@ const TicketingSystem = ({ standalone = false }) => {
     const [editingParsedIdx, setEditingParsedIdx] = useState(null);
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
     
+    const isAdmin = localStorage.getItem('auth_role') === 'admin';
+
     // ID 列表弹窗状态
     const [idListModalOpen, setIdListModalOpen] = useState(false);
     const [idListSearchData, setIdListSearchData] = useState([]);
@@ -111,6 +115,33 @@ const TicketingSystem = ({ standalone = false }) => {
 
     const handleSearch = (values) => loadData(values);
     const handleReset = () => { searchForm.resetFields(); loadData({}); };
+
+    const handleExport = async () => {
+        setLoading(true);
+        try {
+            // 导出全部数据，不带任何过滤器
+            const res = await fetch(`/api/tickets_sys`);
+            const allData = await res.json();
+            
+            const exportColumns = [
+                { title: '演出名称', dataIndex: 'show_name' },
+                { title: '日期', dataIndex: 'show_date' },
+                { title: '观影人', dataIndex: 'viewers' },
+                { title: '配置码', dataIndex: 'config_code' },
+                { title: '数量', dataIndex: 'quantity' },
+                { title: '价格', dataIndex: 'price' },
+                { title: '状态', dataIndex: 'status' },
+                { title: '备注', dataIndex: 'notes' },
+                { title: '添加时间', dataIndex: 'added_time' }
+            ];
+            exportToExcel(allData, exportColumns, '票务系统列表_全部.xlsx');
+            message.success(`已导出 ${allData.length} 条数据`);
+        } catch (e) {
+            message.error("导出失败");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleAuth = async (password) => {
         const res = await fetch("/api/auth", {
@@ -497,6 +528,7 @@ const TicketingSystem = ({ standalone = false }) => {
                             <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
                                 <Button type="primary" icon={<SearchOutlined />} htmlType="submit">搜索</Button>
                                 <Button onClick={handleReset}>重置</Button>
+                                {isAdmin && <Button icon={<FileExcelOutlined />} onClick={handleExport} loading={loading}>导出 Excel</Button>}
                                 <Popconfirm title="确定要删除选中的数据吗？" onConfirm={handleBulkDelete} disabled={selectedRowKeys.length === 0}><Button danger disabled={selectedRowKeys.length === 0}>批量删除</Button></Popconfirm>
                                 <Popconfirm title="确定清空？" onConfirm={handleClearAll}><Button danger type="dashed">清空全部</Button></Popconfirm>
                                 <Button type="primary" style={{ background: '#52c41a' }} icon={<PlusOutlined />} onClick={() => { setEditingId(null); form.resetFields(); setIsModalOpen(true); }}>新增</Button>

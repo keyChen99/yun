@@ -2,6 +2,10 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './legacy.js' // 引入 legacy 逻辑
+import { exportToExcel } from './utils/excelExport'
+
+// 暴露给 legacy 逻辑使用
+window.exportToExcel = exportToExcel;
 
 // 全局 Fetch 拦截器，自动添加授权头
 const originalFetch = window.fetch;

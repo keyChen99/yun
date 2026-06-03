@@ -66,7 +66,7 @@ async def log_visit(request: Request):
     return {"status": "success"}
 
 @router.get("/api/wechat/logs")
-async def get_logs(request: Request):
+async def get_logs(request: Request, limit: int = 500):
     # 强制校验 token 必须是超级管理员
     auth_token = request.headers.get("Authorization")
     from app.core.config import AUTH_PASSWORD
@@ -74,7 +74,7 @@ async def get_logs(request: Request):
         return {"status": "error", "msg": "无权查看日志"}
         
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, db.get_visit_logs)
+    return await loop.run_in_executor(None, db.get_visit_logs, limit)
 
 @router.delete("/api/wechat/{item_id}")
 async def delete_wechat_item(item_id: int):

@@ -5,8 +5,10 @@ import {
 } from 'antd';
 import { 
   SearchOutlined, PlusOutlined, DeleteOutlined, 
-  ClockCircleOutlined, TeamOutlined, DashboardOutlined 
+  ClockCircleOutlined, TeamOutlined, DashboardOutlined,
+  FileExcelOutlined
 } from '@ant-design/icons';
+import { exportToExcel } from '../utils/excelExport';
 
 const WechatListTable = () => {
     const [data, setData] = useState([]);
@@ -23,6 +25,7 @@ const WechatListTable = () => {
     const role = localStorage.getItem('auth_role');
     const token = localStorage.getItem('auth_token');
     const isWechatOnly = role === 'wechat_only';
+    const isAdmin = role === 'admin';
     const isSuperAdmin = token === '248248';
 
     const fetchData = useCallback(async (silent = true) => {
@@ -129,6 +132,37 @@ const WechatListTable = () => {
             message.error("删除失败");
         }
     };
+
+    const handleExport = useCallback(async () => {
+        setLoading(true);
+        try {
+            // 导出全部数据，不带任何过滤器
+            const res = await fetch(`/api/wechat`);
+            const allData = await res.json();
+            
+            const exportColumns = [
+                { title: '微信ID', dataIndex: 'wechat_id' },
+                { title: '是否处理', dataIndex: 'is_processed' },
+                { title: '标签', dataIndex: 'tag' },
+                { title: '备注', dataIndex: 'remarks' },
+                { title: '录入人', dataIndex: 'inputter' },
+                { title: '录入时间', dataIndex: 'added_time' }
+            ];
+            
+            // 转换数据用于导出
+            const exportData = allData.map(item => ({
+                ...item,
+                is_processed: item.is_processed === 1 ? '已处理' : '未处理'
+            }));
+            
+            exportToExcel(exportData, exportColumns, '微信列表_全部.xlsx');
+            message.success(`已导出 ${exportData.length} 条数据`);
+        } catch (e) {
+            message.error("导出失败");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     const columns = [
         { 
@@ -281,6 +315,14 @@ const WechatListTable = () => {
                         onClick={() => fetchData(false)}
                         style={{ flex: 1 }}
                     >刷新</Button>
+                    {isAdmin && (
+                        <Button 
+                            icon={<FileExcelOutlined />} 
+                            onClick={handleExport}
+                            loading={loading}
+                            style={{ flex: 1 }}
+                        >导出 Excel</Button>
+                    )}
                     <Popover content={!inputter ? "请先填写录入身份姓名" : null} trigger="hover">
                         <Button 
                             type="primary" 
