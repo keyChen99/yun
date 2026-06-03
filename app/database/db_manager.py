@@ -656,6 +656,37 @@ def delete_wechat(wid):
     conn.commit()
     conn.close()
 
+def get_and_process_wechat_id():
+    """RPA专用：获取一个未处理的微信ID并标记为已处理"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # 查找最早添加且未处理的微信ID
+    cursor.execute("SELECT * FROM wechat_list WHERE is_processed = 0 ORDER BY id ASC LIMIT 1")
+    row = cursor.fetchone()
+    
+    if row:
+        record_id = row['id']
+        wechat_id = row['wechat_id']
+        
+        # 标记为已处理
+        cursor.execute("UPDATE wechat_list SET is_processed = 1 WHERE id = ?", (record_id,))
+        conn.commit()
+        conn.close()
+        return dict(row)
+    
+    conn.close()
+    return None
+
+def update_wechat_remark_by_wechat_id(wechat_id, remarks):
+    """根据微信ID更新备注"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE wechat_list SET remarks = ? WHERE wechat_id = ?", (remarks, wechat_id))
+    conn.commit()
+    conn.close()
+    return cursor.rowcount > 0
+
 def get_wechat_stats_today():
     """获取今日各录入人的新增数量 (当天 00:00:00 - 23:59:59)"""
     init_wechat_db()

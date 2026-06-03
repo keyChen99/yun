@@ -110,3 +110,41 @@ async def rpa_get_mobile(request: Request):
             "msg": f"已为机器码 {machine_code} 分配手机号: {result['type']}-{result['phone']}"
         }
     return {"status": "error", "msg": "手机号库已用完"}
+
+@router.post("/api/rpa/wechat/claim")
+async def rpa_claim_wechat(request: Request):
+    """
+    RPA接口：获取一个未处理的微信ID并将其标记为已处理
+    """
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, db.get_and_process_wechat_id)
+    
+    if result:
+        return {
+            "status": "success",
+            "data": result,
+            "msg": "获取成功"
+        }
+    return {"status": "error", "msg": "暂无未处理的微信ID"}
+
+@router.post("/api/rpa/wechat/remark")
+async def rpa_update_wechat_remark(request: Request):
+    """
+    RPA接口：根据微信ID更新备注
+    """
+    try:
+        payload = await request.json()
+        wechat_id = payload.get("wechat_id")
+        remarks = payload.get("remarks")
+    except Exception:
+        return {"status": "error", "msg": "解析请求失败"}
+
+    if not wechat_id:
+        return {"status": "error", "msg": "必须提供 wechat_id 字段"}
+    
+    loop = asyncio.get_event_loop()
+    success = await loop.run_in_executor(None, db.update_wechat_remark_by_wechat_id, wechat_id, remarks)
+    
+    if success:
+        return {"status": "success", "msg": "备注更新成功"}
+    return {"status": "error", "msg": "未找到对应的微信ID记录"}
