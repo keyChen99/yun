@@ -264,6 +264,7 @@ def local_advanced_parse(text: str) -> List[Dict[str, Any]]:
             "quantity": len(ids),
             "price": ", ".join(list(dict.fromkeys(prices))),
             "status": "待抢",
+            "commission": ", ".join(list(dict.fromkeys(identified_comm_nums))),
             "notes": ", ".join(list(dict.fromkeys(commissions)))
         })
         

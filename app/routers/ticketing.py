@@ -41,8 +41,9 @@ async def add_ticket_sys(request: Request):
     notes = payload.get("notes")
     status = payload.get("status", "待抢")
     config_code = payload.get("config_code", "")
+    commission = payload.get("commission", "")
     
-    db.save_ticket_sys(show_name, viewers, quantity, price, notes, show_date, status, config_code)
+    db.save_ticket_sys(show_name, viewers, quantity, price, notes, show_date, status, config_code, commission)
     return {"status": "success", "msg": "保存成功"}
 
 @router.post("/api/tickets_sys/bulk")
@@ -67,8 +68,9 @@ async def update_ticket_sys(ticket_id: int, request: Request):
     notes = payload.get("notes")
     status = payload.get("status")
     config_code = payload.get("config_code", "")
+    commission = payload.get("commission", "")
     
-    db.update_ticket_sys(ticket_id, show_name, show_date, viewers, quantity, price, notes, status, config_code)
+    db.update_ticket_sys(ticket_id, show_name, show_date, viewers, quantity, price, notes, status, config_code, commission)
     return {"status": "success", "msg": "更新成功"}
 
 @router.patch("/api/tickets_sys/{ticket_id}/status")

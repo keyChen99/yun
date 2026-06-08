@@ -119,7 +119,8 @@ def init_ticketing_db():
             status TEXT DEFAULT '待抢',
             notes TEXT,
             added_time TEXT,
-            config_code TEXT
+            config_code TEXT,
+            commission TEXT
         )
     ''')
     # 检查字段是否存在（针对旧数据库迁移）
@@ -129,18 +130,20 @@ def init_ticketing_db():
         cursor.execute("ALTER TABLE tickets_sys ADD COLUMN show_date TEXT")
     if 'config_code' not in columns:
         cursor.execute("ALTER TABLE tickets_sys ADD COLUMN config_code TEXT")
+    if 'commission' not in columns:
+        cursor.execute("ALTER TABLE tickets_sys ADD COLUMN commission TEXT")
         
     conn.commit()
     conn.close()
 
-def save_ticket_sys(show_name, viewers, quantity, price, notes, show_date='', status='待抢', config_code=''):
+def save_ticket_sys(show_name, viewers, quantity, price, notes, show_date='', status='待抢', config_code='', commission=''):
     init_ticketing_db()
     conn = get_db()
     cursor = conn.cursor()
     added_time = get_now_cst().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute(
-        "INSERT INTO tickets_sys (show_name, show_date, viewers, quantity, price, notes, status, added_time, config_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (show_name, show_date, viewers, quantity, price, notes, status, added_time, config_code)
+        "INSERT INTO tickets_sys (show_name, show_date, viewers, quantity, price, notes, status, added_time, config_code, commission) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (show_name, show_date, viewers, quantity, price, notes, status, added_time, config_code, commission)
     )
     conn.commit()
     conn.close()
@@ -164,11 +167,12 @@ def save_tickets_bulk(items):
             item.get("notes"),
             item.get("status", "待抢"),
             added_time,
-            item.get("config_code", "")
+            item.get("config_code", ""),
+            item.get("commission", "")
         ))
     
     cursor.executemany(
-        "INSERT INTO tickets_sys (show_name, show_date, viewers, quantity, price, notes, status, added_time, config_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO tickets_sys (show_name, show_date, viewers, quantity, price, notes, status, added_time, config_code, commission) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         data
     )
     conn.commit()
@@ -213,12 +217,12 @@ def update_ticket_status(ticket_id, status):
     conn.commit()
     conn.close()
 
-def update_ticket_sys(ticket_id, show_name, show_date, viewers, quantity, price, notes, status, config_code=''):
+def update_ticket_sys(ticket_id, show_name, show_date, viewers, quantity, price, notes, status, config_code='', commission=''):
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE tickets_sys SET show_name = ?, show_date = ?, viewers = ?, quantity = ?, price = ?, notes = ?, status = ?, config_code = ? WHERE id = ?",
-        (show_name, show_date, viewers, quantity, price, notes, status, config_code, ticket_id)
+        "UPDATE tickets_sys SET show_name = ?, show_date = ?, viewers = ?, quantity = ?, price = ?, notes = ?, status = ?, config_code = ?, commission = ? WHERE id = ?",
+        (show_name, show_date, viewers, quantity, price, notes, status, config_code, commission, ticket_id)
     )
     conn.commit()
     conn.close()

@@ -6,7 +6,7 @@ import {
 import { 
   SearchOutlined, PlusOutlined, DeleteOutlined, 
   EditOutlined, HistoryOutlined, ReloadOutlined,
-  FileExcelOutlined
+  FileExcelOutlined, CopyOutlined
 } from '@ant-design/icons';
 import { exportToExcel } from '../utils/excelExport';
 import IdListRenderer from './IdListRenderer';
@@ -130,6 +130,7 @@ const TicketingSystem = ({ standalone = false }) => {
                 { title: '配置码', dataIndex: 'config_code' },
                 { title: '数量', dataIndex: 'quantity' },
                 { title: '价格', dataIndex: 'price' },
+                { title: '佣金', dataIndex: 'commission' },
                 { title: '状态', dataIndex: 'status' },
                 { title: '备注', dataIndex: 'notes' },
                 { title: '添加时间', dataIndex: 'added_time' }
@@ -267,6 +268,62 @@ const TicketingSystem = ({ standalone = false }) => {
         loadData();
     };
 
+    const handleGenerateCopywriting = () => {
+        if (selectedRowKeys.length === 0) {
+            message.warning("请先勾选需要生成的票务");
+            return;
+        }
+
+        const selectedData = data.filter(item => selectedRowKeys.includes(item.id));
+        
+        // 按演出名称分组，保持原始勾选顺序中的相对顺序，或者按 show_name 排序
+        // 这里我们按演出分组以满足虚线分隔的要求
+        const grouped = selectedData.reduce((acc, item) => {
+            if (!acc[item.show_name]) acc[item.show_name] = [];
+            acc[item.show_name].push(item);
+            return acc;
+        }, {});
+
+        const showNames = Object.keys(grouped);
+        const result = showNames.map((showName, index) => {
+            const items = grouped[showName];
+            const itemTexts = items.map(item => {
+                  const viewers = item.viewers || "";
+                  const commissionPart = item.commission ? `${item.commission}🧧` : "";
+                  const notesPart = item.notes || "全平台第一单";
+                  const lastLine = [commissionPart, notesPart].filter(Boolean).join(' ');
+                  
+                  return `${item.show_name} ${item.show_date} ${item.price}\n${viewers}\n${lastLine}`.trim();
+              });
+            
+            return itemTexts.join('\n\n');
+        }).join('\n\n-------------------------------\n\n');
+
+        // 复制到剪贴板
+        const textArea = document.createElement("textarea");
+        textArea.value = result;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            message.success("发单文案已生成并复制到剪贴板");
+            
+            // 显示预览
+            Modal.success({
+                title: '文案已复制',
+                content: (
+                    <pre style={{ maxHeight: '400px', overflow: 'auto', background: '#f5f5f5', padding: '10px', borderRadius: '4px', whiteSpace: 'pre-wrap' }}>
+                        {result}
+                    </pre>
+                ),
+                width: 600,
+            });
+        } catch (err) {
+            message.error("复制失败");
+        }
+        document.body.removeChild(textArea);
+    };
+
     const enrichItem = async (item) => {
         if (item.show_date && item.show_date.includes('号') && !item.show_date.includes('-')) {
             const day = item.show_date.match(/\d+/)[0];
@@ -303,7 +360,8 @@ const TicketingSystem = ({ standalone = false }) => {
                 setEditingParsedIdx(0);
                 form.setFieldsValue({
                     ...enrichedItems[0],
-                    status: enrichedItems[0].status || '待抢'
+                    status: enrichedItems[0].status || '待抢',
+                    commission: enrichedItems[0].commission || ''
                 });
                 message.success(`成功识别到 ${enrichedItems.length} 组信息`);
             } else {
@@ -346,6 +404,7 @@ const TicketingSystem = ({ standalone = false }) => {
                     viewers: firstItem.viewers,
                     quantity: firstItem.quantity,
                     price: firstItem.price,
+                    commission: firstItem.commission || '',
                     notes: firstItem.notes,
                     status: firstItem.status || '待抢',
                     config_code: firstItem.config_code || ''
@@ -453,8 +512,15 @@ const TicketingSystem = ({ standalone = false }) => {
             }
 
             phones.forEach(p => notes.push(p));
-            const extraMatch = input.match(/(\d+🧧[^\s\n]*|佣金\d+|红包\d+)/);
-            if (extraMatch) notes.push(extraMatch[0]);
+            let commission = "";
+            const extraMatch = input.match(/(\d+🧧|佣金\s*(\d+)|红包\s*(\d+))/);
+            if (extraMatch) {
+                if (extraMatch[1].includes('🧧')) {
+                    commission = extraMatch[1].replace('🧧', '');
+                } else {
+                    commission = extraMatch[2] || extraMatch[3];
+                }
+            }
             lines.forEach(line => {
                 if (line.includes("连坐") || line.includes("一张") || line.includes("连连")) notes.push(line);
             });
@@ -465,7 +531,8 @@ const TicketingSystem = ({ standalone = false }) => {
                 viewers: viewers.join('\n'),
                 quantity: quantity,
                 price: price,
-                notes: [...new Set(notes)].join(' '),
+                commission: commission,
+                notes: notes.length > 0 ? [...new Set(notes)].join(' ') : '全平台第一单',
                 status: '待抢'
             };
 
@@ -503,6 +570,7 @@ const TicketingSystem = ({ standalone = false }) => {
         { title: '配置码', dataIndex: 'config_code', key: 'config_code', width: 120, align: 'center', ellipsis: true, render: (text) => (<div style={{ cursor: 'pointer', color: '#1890ff' }} onClick={(e) => window.copyPlainText(e, text, '配置码已复制')}>{text || '-'}</div>) },
         { title: '数', dataIndex: 'quantity', key: 'quantity', width: 50, align: 'center' },
         { title: '价', dataIndex: 'price', key: 'price', width: 80, align: 'center' },
+        { title: '佣金', dataIndex: 'commission', key: 'commission', width: 80, align: 'center', render: (text) => text ? `${text}🧧` : '-' },
         { title: '状态', dataIndex: 'status', key: 'status', width: 100, align: 'center', render: (status, record) => (<Select value={status} onChange={(val) => handleStatusChange(record.id, val)} size="small" options={[{ value: '待抢', label: <Tag color="orange">待抢</Tag> }, { value: '完成', label: <Tag color="green">完成</Tag> }, { value: '退款', label: <Tag color="red">退款</Tag> }]} />) },
         { title: '备注', dataIndex: 'notes', key: 'notes', width: 150, align: 'center', ellipsis: true },
         { title: '操作', key: 'action', width: 130, fixed: 'right', align: 'center', render: (_, record) => (<Space size="small"><Button type="link" size="small" icon={<EditOutlined />} onClick={() => { setEditingId(record.id); form.setFieldsValue(record); setIsModalOpen(true); }}>编辑</Button><Popconfirm title="确定删除吗？" onConfirm={() => handleDelete(record.id)}><Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button></Popconfirm></Space>) },
@@ -529,6 +597,15 @@ const TicketingSystem = ({ standalone = false }) => {
                                 <Button type="primary" icon={<SearchOutlined />} htmlType="submit">搜索</Button>
                                 <Button onClick={handleReset}>重置</Button>
                                 {isAdmin && <Button icon={<FileExcelOutlined />} onClick={handleExport} loading={loading}>导出 Excel</Button>}
+                                <Button 
+                                    icon={<CopyOutlined />} 
+                                    onClick={handleGenerateCopywriting} 
+                                    disabled={selectedRowKeys.length === 0}
+                                    type="primary"
+                                    ghost
+                                >
+                                    生成文案
+                                </Button>
                                 <Popconfirm title="确定要删除选中的数据吗？" onConfirm={handleBulkDelete} disabled={selectedRowKeys.length === 0}><Button danger disabled={selectedRowKeys.length === 0}>批量删除</Button></Popconfirm>
                                 <Popconfirm title="确定清空？" onConfirm={handleClearAll}><Button danger type="dashed">清空全部</Button></Popconfirm>
                                 <Button type="primary" style={{ background: '#52c41a' }} icon={<PlusOutlined />} onClick={() => { setEditingId(null); form.resetFields(); setIsModalOpen(true); }}>新增</Button>
@@ -575,6 +652,7 @@ const TicketingSystem = ({ standalone = false }) => {
                                             viewers: item.viewers,
                                             quantity: item.quantity,
                                             price: item.price,
+                                            commission: item.commission,
                                             notes: item.notes,
                                             status: item.status || '待抢',
                                             config_code: item.config_code || ''
@@ -640,12 +718,13 @@ const TicketingSystem = ({ standalone = false }) => {
                             </Row>
                             <Form.Item name="viewers" label="观影人信息"><Input.TextArea rows={4} /></Form.Item>
                             <Row gutter={16}>
-                                <Col span={8}><Form.Item name="price" label="价格"><Input /></Form.Item></Col>
-                                <Col span={8}><Form.Item name="quantity" label="数量"><Input type="number" /></Form.Item></Col>
-                                <Col span={8}><Form.Item name="status" label="状态" initialValue="待抢"><Select options={[{value:'待抢',label:'待抢'},{value:'完成',label:'完成'},{value:'退款',label:'退款'}]} /></Form.Item></Col>
+                                <Col span={6}><Form.Item name="price" label="价格"><Input /></Form.Item></Col>
+                                <Col span={6}><Form.Item name="quantity" label="数量"><Input type="number" /></Form.Item></Col>
+                                <Col span={6}><Form.Item name="commission" label="佣金"><Input suffix="🧧" /></Form.Item></Col>
+                                <Col span={6}><Form.Item name="status" label="状态" initialValue="待抢"><Select options={[{value:'待抢',label:'待抢'},{value:'完成',label:'完成'},{value:'退款',label:'退款'}]} /></Form.Item></Col>
                             </Row>
                             <Form.Item name="config_code" label="配置码"><Input /></Form.Item>
-                            <Form.Item name="notes" label="备注"><Input /></Form.Item>
+                            <Form.Item name="notes" label="备注" initialValue="全平台第一单"><Input /></Form.Item>
                         </Form>
                     </Col>
                 </Row>
