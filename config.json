@@ -1,0 +1,15 @@
+{
+  "prompt": {"gridMaxTokens": 300},
+  "vision": {
+    "shotWidth": 620, "cellWidth": 220,
+    "submitYRatio": 0.800, "headerYRatio": 0.100, "darkThresh": 150,
+    "gridTop": 0.224, "gridBottom": 0.752, "gridLeft": 0.029, "gridRight": 0.971,
+    "hoverXRef": 330, "hoverYRef": 50
+  },
+  "login": {
+    "btnX": 230, "btnY": 1232,
+    "countryX": 60, "countryY": 425,
+    "phoneX": 240, "phoneY": 420,
+    "codeX": 200, "codeY": 516
+  }
+}
